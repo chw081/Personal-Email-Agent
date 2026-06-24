@@ -1,5 +1,6 @@
-import type { GmailRecentEmail } from "@/lib/types/gmail";
+import type { GmailRecentEmail, GmailRecentEmailRaw } from "@/lib/types/gmail";
 import type { Email } from "@/lib/types/email";
+import { decodeHtmlEntities, withFallback } from "@/lib/utils/format";
 
 function parseSender(from: string): { sender: string; senderEmail: string | null } {
   const angleMatch = from.match(/^(.+?)\s*<([^>]+)>$/);
@@ -17,20 +18,37 @@ function parseSender(from: string): { sender: string; senderEmail: string | null
   return { sender: from.trim(), senderEmail: null };
 }
 
+/** Normalize backend payload to a consistent GmailRecentEmail shape. */
+export function normalizeGmailRecentEmail(raw: GmailRecentEmailRaw): GmailRecentEmail {
+  const fromValue = withFallback(raw.from ?? raw.sender, "");
+
+  return {
+    gmail_id: withFallback(raw.gmail_id, ""),
+    thread_id: withFallback(raw.thread_id, ""),
+    from: fromValue,
+    subject: withFallback(raw.subject, ""),
+    date: withFallback(raw.date, ""),
+    snippet: withFallback(raw.snippet, ""),
+    internal_date_ms: raw.internal_date_ms ?? 0,
+  };
+}
+
 export function mapGmailToEmail(gmailEmail: GmailRecentEmail): Email {
-  const { sender, senderEmail } = parseSender(gmailEmail.from);
+  const normalized = normalizeGmailRecentEmail(gmailEmail);
+  const fromRaw = decodeHtmlEntities(normalized.from);
+  const { sender, senderEmail } = parseSender(fromRaw);
   const timestamp = new Date().toISOString();
 
   return {
-    id: gmailEmail.gmail_id,
-    gmail_message_id: gmailEmail.gmail_id,
-    thread_id: gmailEmail.thread_id,
-    sender,
+    id: normalized.gmail_id,
+    gmail_message_id: normalized.gmail_id,
+    thread_id: normalized.thread_id || null,
+    sender: withFallback(sender, "Unknown sender"),
     sender_email: senderEmail,
-    subject: gmailEmail.subject,
-    snippet: gmailEmail.snippet,
-    body_text: gmailEmail.snippet,
-    received_at: gmailEmail.date,
+    subject: decodeHtmlEntities(withFallback(normalized.subject, "(No subject)")),
+    snippet: decodeHtmlEntities(withFallback(normalized.snippet, "")) || null,
+    body_text: decodeHtmlEntities(withFallback(normalized.snippet, "")) || null,
+    received_at: normalized.date ? normalized.date : null,
     is_unread: true,
     has_attachment: false,
     gmail_labels: ["INBOX"],
@@ -39,6 +57,6 @@ export function mapGmailToEmail(gmailEmail: GmailRecentEmail): Email {
   };
 }
 
-export function mapGmailResponseToEmails(emails: GmailRecentEmail[]): Email[] {
-  return emails.map(mapGmailToEmail);
+export function mapGmailResponseToEmails(emails: GmailRecentEmailRaw[]): Email[] {
+  return emails.map((email) => mapGmailToEmail(normalizeGmailRecentEmail(email)));
 }

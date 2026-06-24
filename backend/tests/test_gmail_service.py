@@ -28,6 +28,7 @@ from app.services.gmail_service import (
 SAMPLE_GMAIL_RESPONSE = {
     "id": "abc123",
     "threadId": "thread456",
+    "internalDate": "1704103200000",
     "snippet": "Your order has shipped.",
     "payload": {
         "headers": [
@@ -54,8 +55,9 @@ class HeaderAndFormatTests(unittest.TestCase):
         self.assertEqual(result["thread_id"], "thread456")
         self.assertEqual(result["from"], "Shop <orders@shop.example>")
         self.assertEqual(result["subject"], "Order shipped")
-        self.assertEqual(result["date"], "Mon, 1 Jan 2024 10:00:00 +0000")
+        self.assertTrue(result["date"].startswith("2024-01-01"))
         self.assertEqual(result["snippet"], "Your order has shipped.")
+        self.assertEqual(result["internal_date_ms"], 1704103200000)
 
 
 class FetchRecentMessagesTests(unittest.TestCase):
@@ -72,11 +74,15 @@ class FetchRecentMessagesTests(unittest.TestCase):
             "messages": [{"id": "abc123"}, {"id": "def456"}],
         }
         mock_service.users().messages().get().execute.side_effect = [
-            SAMPLE_GMAIL_RESPONSE,
+            {
+                **SAMPLE_GMAIL_RESPONSE,
+                "internalDate": "1704103200000",
+            },
             {
                 **SAMPLE_GMAIL_RESPONSE,
                 "id": "def456",
                 "threadId": "thread789",
+                "internalDate": "1704189600000",
                 "snippet": "Meeting reminder.",
                 "payload": {
                     "headers": [
@@ -91,8 +97,9 @@ class FetchRecentMessagesTests(unittest.TestCase):
         results = fetch_recent_gmail_messages(limit=2)
 
         self.assertEqual(len(results), 2)
-        self.assertEqual(results[0]["gmail_id"], "abc123")
-        self.assertEqual(results[1]["subject"], "Team sync")
+        self.assertEqual(results[0]["gmail_id"], "def456")
+        self.assertEqual(results[1]["gmail_id"], "abc123")
+        self.assertEqual(results[0]["subject"], "Team sync")
         self.assertEqual(mock_get_service.call_count, 1)
 
     @patch.object(gmail_service, "get_gmail_service")

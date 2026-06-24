@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TypedDict
 
@@ -29,6 +30,7 @@ GmailMessage = TypedDict(
         "subject": str,
         "date": str,
         "snippet": str,
+        "internal_date_ms": int,
     },
 )
 
@@ -124,6 +126,20 @@ def _header_value(headers: list[dict[str, str]], name: str) -> str:
     return ""
 
 
+def _internal_date_ms(message: dict) -> int:
+    value = message.get("internalDate")
+    if value is None:
+        return 0
+    return int(value)
+
+
+def _format_date(message: dict, headers: list[dict[str, str]]) -> str:
+    internal_ms = _internal_date_ms(message)
+    if internal_ms:
+        return datetime.fromtimestamp(internal_ms / 1000, tz=timezone.utc).isoformat()
+    return _header_value(headers, "Date")
+
+
 def _format_message(message: dict) -> GmailMessage:
     payload = message.get("payload", {})
     headers = payload.get("headers", [])
@@ -133,8 +149,9 @@ def _format_message(message: dict) -> GmailMessage:
         "thread_id": message.get("threadId", ""),
         "from": _header_value(headers, "From"),
         "subject": _header_value(headers, "Subject"),
-        "date": _header_value(headers, "Date"),
+        "date": _format_date(message, headers),
         "snippet": message.get("snippet", ""),
+        "internal_date_ms": _internal_date_ms(message),
     }
 
 
@@ -165,7 +182,7 @@ def fetch_recent_gmail_messages(limit: int = 5) -> list[GmailMessage]:
         limit: Maximum number of messages to return (default 5).
 
     Returns:
-        A list of structured message dictionaries.
+        A list of structured message dictionaries sorted newest-first.
     """
     if limit < 1:
         raise ValueError("limit must be at least 1")
@@ -193,7 +210,8 @@ def fetch_recent_gmail_messages(limit: int = 5) -> list[GmailMessage]:
             continue
         messages.append(_fetch_message(service, message_id))
 
-    return messages
+    messages.sort(key=lambda message: message["internal_date_ms"], reverse=True)
+    return messages[:limit]
 
 
 if __name__ == "__main__":

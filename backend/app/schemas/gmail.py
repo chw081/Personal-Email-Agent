@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class GmailRecentEmail(BaseModel):
@@ -6,10 +6,14 @@ class GmailRecentEmail(BaseModel):
 
     gmail_id: str
     thread_id: str
-    sender: str = Field(alias="from")
-    subject: str
-    date: str
-    snippet: str
+    from_: str = Field(
+        validation_alias=AliasChoices("from", "sender"),
+        serialization_alias="from",
+    )
+    subject: str = ""
+    date: str = ""
+    snippet: str = ""
+    internal_date_ms: int = 0
 
 
 class GmailRecentResponse(BaseModel):
