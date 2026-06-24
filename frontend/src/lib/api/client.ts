@@ -20,7 +20,18 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   });
 
   if (!response.ok) {
-    const detail = await response.text();
+    let detail = response.statusText;
+    try {
+      const body = (await response.json()) as { detail?: string | unknown };
+      if (typeof body.detail === "string") {
+        detail = body.detail;
+      } else if (body.detail) {
+        detail = JSON.stringify(body.detail);
+      }
+    } catch {
+      const text = await response.text();
+      if (text) detail = text;
+    }
     throw new ApiError(detail || response.statusText, response.status);
   }
 

@@ -30,7 +30,7 @@ export function DashboardHeader({
           </p>
           <p className="flex items-center justify-end gap-1 text-xs text-slate-400">
             <Sparkles className="h-3 w-3" />
-            {isMockMode ? "Mock data mode" : "Connected to API"}
+            {isMockMode ? "Mock data mode" : "Gmail via FastAPI"}
           </p>
         </div>
       </div>

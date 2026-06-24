@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AnalysisPanel } from "@/components/analysis/AnalysisPanel";
 import { EmailDetail } from "@/components/inbox/EmailDetail";
@@ -8,8 +8,8 @@ import { InboxList } from "@/components/inbox/InboxList";
 import { BucketSidebar } from "@/components/layout/BucketSidebar";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { analyzeEmail as analyzeEmailApi } from "@/lib/api/analysis";
-import { isMockMode } from "@/lib/api/client";
-import { listEmails } from "@/lib/api/emails";
+import { ApiError, isMockMode } from "@/lib/api/client";
+import { fetchRecentGmailEmails } from "@/lib/api/gmail";
 import {
   MOCK_ANALYSES,
   MOCK_EMAILS,
@@ -29,11 +29,12 @@ export function Dashboard() {
     mockMode ? { ...MOCK_ANALYSES } : {},
   );
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(
-    MOCK_EMAILS[0]?.id ?? null,
+    mockMode ? (MOCK_EMAILS[0]?.id ?? null) : null,
   );
   const [activeBucket, setActiveBucket] = useState<Bucket | "all">("all");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(!mockMode);
+  const [error, setError] = useState<string | null>(null);
 
   const selectedEmail = emails.find((email) => email.id === selectedEmailId) ?? null;
   const selectedAnalysis = selectedEmailId ? analyses[selectedEmailId] : null;
@@ -48,16 +49,39 @@ export function Dashboard() {
     return emails.filter((email) => getBucket(analyses[email.id]) === activeBucket);
   }, [activeBucket, analyses, emails]);
 
-  const loadFromApi = useCallback(async () => {
+  const loadGmailEmails = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
+
     try {
-      const fetched = await listEmails();
+      const fetched = await fetchRecentGmailEmails(5);
       setEmails(fetched);
-      if (fetched[0]) setSelectedEmailId(fetched[0].id);
+      setSelectedEmailId((current) => {
+        if (current && fetched.some((email) => email.id === current)) {
+          return current;
+        }
+        return fetched[0]?.id ?? null;
+      });
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Failed to load Gmail emails";
+      setError(message);
+      setEmails([]);
+      setSelectedEmailId(null);
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!mockMode) {
+      void loadGmailEmails();
+    }
+  }, [mockMode, loadGmailEmails]);
 
   const handleAnalyze = useCallback(async () => {
     if (!selectedEmail) return;
@@ -101,11 +125,11 @@ export function Dashboard() {
             {!mockMode && (
               <button
                 type="button"
-                onClick={loadFromApi}
+                onClick={loadGmailEmails}
                 disabled={isLoading}
                 className="text-xs font-medium text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
               >
-                {isLoading ? "Loading…" : "Refresh from API"}
+                {isLoading ? "Loading…" : "Refresh Gmail"}
               </button>
             )}
           </div>
@@ -114,6 +138,14 @@ export function Dashboard() {
             analyses={analyses}
             selectedEmailId={selectedEmailId}
             onSelect={setSelectedEmailId}
+            isLoading={isLoading}
+            error={error}
+            onRetry={mockMode ? undefined : loadGmailEmails}
+            emptyMessage={
+              activeBucket === "all"
+                ? "Your Gmail inbox is empty."
+                : "No emails in this bucket."
+            }
           />
         </div>
 

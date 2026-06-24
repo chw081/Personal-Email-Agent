@@ -1,7 +1,10 @@
-export function formatRelativeTime(isoDate: string | null): string {
-  if (!isoDate) return "Unknown";
+export function formatRelativeTime(dateValue: string | null): string {
+  if (!dateValue) return "Unknown";
 
-  const date = new Date(isoDate);
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) {
+    return dateValue.length > 24 ? `${dateValue.slice(0, 24)}…` : dateValue;
+  }
   const diffMs = Date.now() - date.getTime();
   const diffMinutes = Math.floor(diffMs / 60_000);
 
