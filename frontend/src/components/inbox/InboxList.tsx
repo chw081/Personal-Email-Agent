@@ -1,14 +1,17 @@
 import { AlertCircle, Inbox, Loader2, RefreshCw } from "lucide-react";
 
 import { InboxItem } from "@/components/inbox/InboxItem";
-import type { EmailAnalysis } from "@/lib/types/analysis";
+import type { EmailAnalysisResult } from "@/lib/types/analysis";
 import type { Email } from "@/lib/types/email";
 
 interface InboxListProps {
   emails: Email[];
-  analyses: Record<string, EmailAnalysis | undefined>;
+  emailAnalysisResults: Record<string, EmailAnalysisResult | undefined>;
+  analyzingEmailIds: Record<string, boolean>;
+  analysisErrors: Record<string, string | null>;
   selectedEmailId: string | null;
   onSelect: (emailId: string) => void;
+  onAnalyzeEmail: (email: Email) => void;
   isLoading?: boolean;
   error?: string | null;
   onRetry?: () => void;
@@ -17,9 +20,12 @@ interface InboxListProps {
 
 export function InboxList({
   emails,
-  analyses,
+  emailAnalysisResults,
+  analyzingEmailIds,
+  analysisErrors,
   selectedEmailId,
   onSelect,
+  onAnalyzeEmail,
   isLoading = false,
   error = null,
   onRetry,
@@ -69,9 +75,12 @@ export function InboxList({
         <InboxItem
           key={email.id}
           email={email}
-          analysis={analyses[email.id]}
+          analysisResult={emailAnalysisResults[email.id]}
+          isAnalyzing={Boolean(analyzingEmailIds[email.id])}
+          analysisError={analysisErrors[email.id] ?? null}
           isSelected={email.id === selectedEmailId}
           onSelect={() => onSelect(email.id)}
+          onAnalyze={() => onAnalyzeEmail(email)}
         />
       ))}
     </div>

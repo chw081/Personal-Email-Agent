@@ -7,15 +7,15 @@ import { EmailDetail } from "@/components/inbox/EmailDetail";
 import { InboxList } from "@/components/inbox/InboxList";
 import { BucketSidebar } from "@/components/layout/BucketSidebar";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
-import { analyzeEmail as analyzeEmailApi } from "@/lib/api/analysis";
+import { analyzeEmailContent } from "@/lib/api/analysis";
 import { ApiError, isMockMode } from "@/lib/api/client";
 import { fetchRecentGmailEmails } from "@/lib/api/gmail";
 import {
   MOCK_ANALYSES,
   MOCK_EMAILS,
-  mockClassifyEmail,
+  mockAnalyzeEmailContent,
 } from "@/lib/mock/emails";
-import type { Bucket, EmailAnalysis } from "@/lib/types/analysis";
+import type { Bucket, EmailAnalysis, EmailAnalysisResult } from "@/lib/types/analysis";
 import type { Email } from "@/lib/types/email";
 import { countByBucket, getBucket, BUCKET_LABELS } from "@/lib/utils/buckets";
 
@@ -28,16 +28,21 @@ export function Dashboard() {
   const [analyses, setAnalyses] = useState<Record<string, EmailAnalysis>>(() =>
     mockMode ? { ...MOCK_ANALYSES } : {},
   );
+  const [emailAnalysisResults, setEmailAnalysisResults] = useState<
+    Record<string, EmailAnalysisResult>
+  >({});
+  const [analyzingEmailIds, setAnalyzingEmailIds] = useState<Record<string, boolean>>({});
+  const [analysisErrors, setAnalysisErrors] = useState<Record<string, string | null>>({});
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(
     mockMode ? (MOCK_EMAILS[0]?.id ?? null) : null,
   );
   const [activeBucket, setActiveBucket] = useState<Bucket | "all">("all");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isLoading, setIsLoading] = useState(!mockMode);
   const [error, setError] = useState<string | null>(null);
 
   const selectedEmail = emails.find((email) => email.id === selectedEmailId) ?? null;
-  const selectedAnalysis = selectedEmailId ? analyses[selectedEmailId] : null;
+  const selectedAnalysis = selectedEmailId ? emailAnalysisResults[selectedEmailId] ?? null : null;
+  const isAnalyzingSelected = selectedEmailId ? Boolean(analyzingEmailIds[selectedEmailId]) : false;
 
   const bucketCounts = useMemo(
     () => countByBucket(emails.map((e) => e.id), analyses),
@@ -83,29 +88,51 @@ export function Dashboard() {
     }
   }, [mockMode, loadGmailEmails]);
 
+  const handleAnalyzeEmail = useCallback(
+    async (email: Email) => {
+      setAnalyzingEmailIds((prev) => ({ ...prev, [email.id]: true }));
+      setAnalysisErrors((prev) => ({ ...prev, [email.id]: null }));
+
+      try {
+        let result: EmailAnalysisResult;
+
+        if (mockMode) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          result = mockAnalyzeEmailContent(email);
+        } else {
+          result = await analyzeEmailContent({
+            subject: email.subject,
+            sender: email.sender,
+            snippet: email.snippet ?? "",
+          });
+        }
+
+        setEmailAnalysisResults((prev) => ({ ...prev, [email.id]: result }));
+      } catch (err) {
+        const message =
+          err instanceof ApiError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : "Failed to analyze email";
+        setAnalysisErrors((prev) => ({ ...prev, [email.id]: message }));
+      } finally {
+        setAnalyzingEmailIds((prev) => ({ ...prev, [email.id]: false }));
+      }
+    },
+    [mockMode],
+  );
+
   const handleAnalyze = useCallback(async () => {
     if (!selectedEmail) return;
-
-    setIsAnalyzing(true);
-    try {
-      if (mockMode) {
-        await new Promise((resolve) => setTimeout(resolve, 600));
-        const result = mockClassifyEmail(selectedEmail);
-        setAnalyses((prev) => ({ ...prev, [selectedEmail.id]: result }));
-      } else {
-        const result = await analyzeEmailApi(selectedEmail.id);
-        setAnalyses((prev) => ({ ...prev, [selectedEmail.id]: result }));
-      }
-    } finally {
-      setIsAnalyzing(false);
-    }
-  }, [mockMode, selectedEmail]);
+    await handleAnalyzeEmail(selectedEmail);
+  }, [handleAnalyzeEmail, selectedEmail]);
 
   return (
     <div className="flex h-screen flex-col bg-slate-100">
       <DashboardHeader
         emailCount={emails.length}
-        analyzedCount={Object.keys(analyses).length}
+        analyzedCount={Object.keys(emailAnalysisResults).length}
         isMockMode={mockMode}
       />
 
@@ -135,9 +162,12 @@ export function Dashboard() {
           </div>
           <InboxList
             emails={filteredEmails}
-            analyses={analyses}
+            emailAnalysisResults={emailAnalysisResults}
+            analyzingEmailIds={analyzingEmailIds}
+            analysisErrors={analysisErrors}
             selectedEmailId={selectedEmailId}
             onSelect={setSelectedEmailId}
+            onAnalyzeEmail={handleAnalyzeEmail}
             isLoading={isLoading}
             error={error}
             onRetry={mockMode ? undefined : loadGmailEmails}
@@ -155,8 +185,8 @@ export function Dashboard() {
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <AnalysisPanel
-              analysis={selectedAnalysis ?? null}
-              isAnalyzing={isAnalyzing}
+              analysis={selectedAnalysis}
+              isAnalyzing={isAnalyzingSelected}
               onAnalyze={handleAnalyze}
             />
           </div>

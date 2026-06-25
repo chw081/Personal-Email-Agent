@@ -1,4 +1,4 @@
-import type { EmailAnalysis } from "@/lib/types/analysis";
+import type { EmailAnalysis, EmailAnalysisResult } from "@/lib/types/analysis";
 import type { Email } from "@/lib/types/email";
 
 const now = new Date().toISOString();
@@ -387,5 +387,38 @@ export function mockClassifyEmail(email: Email): EmailAnalysis {
     model_name: "mock-classifier-v1",
     schema_version: "v1",
     created_at: new Date().toISOString(),
+  };
+}
+
+const HIGH_PRIORITY_KEYWORDS = ["urgent", "asap", "deadline", "interview", "action required"];
+const MEDIUM_PRIORITY_KEYWORDS = ["meeting", "schedule", "follow up", "invoice"];
+const CAREER_KEYWORDS = ["interview", "recruiter", "application", "job"];
+const FINANCE_KEYWORDS = ["invoice", "payment", "bank", "credit", "statement"];
+const PROMOTION_KEYWORDS = ["sale", "discount", "offer", "promotion"];
+
+function buildMockActionItems(category: string): string[] {
+  if (category === "Career") return ["Review and respond if relevant."];
+  if (category === "Finance") return ["Check financial details."];
+  return ["No immediate action needed."];
+}
+
+export function mockAnalyzeEmailContent(email: Email): EmailAnalysisResult {
+  const text = [email.subject, email.sender, email.snippet].filter(Boolean).join(" ").toLowerCase();
+  const snippet = email.snippet?.trim() ?? "";
+
+  let category = "Other";
+  if (CAREER_KEYWORDS.some((keyword) => text.includes(keyword))) category = "Career";
+  else if (FINANCE_KEYWORDS.some((keyword) => text.includes(keyword))) category = "Finance";
+  else if (PROMOTION_KEYWORDS.some((keyword) => text.includes(keyword))) category = "Promotion";
+
+  let priority = "Low";
+  if (HIGH_PRIORITY_KEYWORDS.some((keyword) => text.includes(keyword))) priority = "High";
+  else if (MEDIUM_PRIORITY_KEYWORDS.some((keyword) => text.includes(keyword))) priority = "Medium";
+
+  return {
+    summary: snippet || "No useful preview available.",
+    priority,
+    category,
+    action_items: buildMockActionItems(category),
   };
 }

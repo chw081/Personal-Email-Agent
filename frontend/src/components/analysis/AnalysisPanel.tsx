@@ -1,23 +1,32 @@
 import {
   AlertTriangle,
   FolderOpen,
-  MessageSquareReply,
+  ListChecks,
   Sparkles,
   Tag,
 } from "lucide-react";
 
 import { AnalysisCard } from "@/components/analysis/AnalysisCard";
-import { PriorityBadge } from "@/components/analysis/PriorityBadge";
-import type { EmailAnalysis } from "@/lib/types/analysis";
-import { formatActionLabel, formatDomainLabel } from "@/lib/utils/format";
+import type { EmailAnalysisResult } from "@/lib/types/analysis";
+
+const PRIORITY_STYLES: Record<string, string> = {
+  High: "bg-red-100 text-red-800 ring-red-200",
+  Medium: "bg-amber-100 text-amber-900 ring-amber-200",
+  Low: "bg-slate-100 text-slate-700 ring-slate-200",
+};
 
 interface AnalysisPanelProps {
-  analysis: EmailAnalysis | null;
+  analysis: EmailAnalysisResult | null;
   isAnalyzing: boolean;
   onAnalyze: () => void;
 }
 
 export function AnalysisPanel({ analysis, isAnalyzing, onAnalyze }: AnalysisPanelProps) {
+  const priorityStyle =
+    analysis?.priority && PRIORITY_STYLES[analysis.priority]
+      ? PRIORITY_STYLES[analysis.priority]
+      : "bg-slate-100 text-slate-700 ring-slate-200";
+
   return (
     <section className="flex h-full flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -25,7 +34,7 @@ export function AnalysisPanel({ analysis, isAnalyzing, onAnalyze }: AnalysisPane
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
             AI Analysis
           </h2>
-          <p className="text-xs text-slate-400">Mock classifier · demo mode</p>
+          <p className="text-xs text-slate-400">Rule-based classifier</p>
         </div>
         <button
           type="button"
@@ -43,7 +52,7 @@ export function AnalysisPanel({ analysis, isAnalyzing, onAnalyze }: AnalysisPane
           <Sparkles className="mb-3 h-8 w-8 text-indigo-400" />
           <p className="text-sm font-medium text-slate-700">No analysis yet</p>
           <p className="mt-1 max-w-xs text-sm text-slate-500">
-            Select an email and run analysis to see priority, category, and suggested action.
+            Select an email and run analysis to see priority, category, and suggested actions.
           </p>
         </div>
       ) : (
@@ -51,17 +60,17 @@ export function AnalysisPanel({ analysis, isAnalyzing, onAnalyze }: AnalysisPane
           <AnalysisCard
             title="Priority"
             icon={<AlertTriangle className="h-4 w-4" />}
-            accent={analysis.priority === "critical" ? "urgent" : "default"}
+            accent={analysis.priority === "High" ? "urgent" : "default"}
           >
-            <PriorityBadge priority={analysis.priority} />
-            <p className="mt-2 text-xs text-slate-500">
-              Confidence: {Math.round(analysis.confidence * 100)}%
-            </p>
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${priorityStyle}`}
+            >
+              {analysis.priority}
+            </span>
           </AnalysisCard>
 
           <AnalysisCard title="Category" icon={<Tag className="h-4 w-4" />}>
-            <p className="font-medium">{formatDomainLabel(analysis.domain)}</p>
-            <p className="mt-1 text-xs text-slate-500">{analysis.subcategory.replace(/_/g, " ")}</p>
+            <p className="font-medium">{analysis.category}</p>
           </AnalysisCard>
 
           <AnalysisCard
@@ -69,18 +78,22 @@ export function AnalysisPanel({ analysis, isAnalyzing, onAnalyze }: AnalysisPane
             icon={<FolderOpen className="h-4 w-4" />}
             accent="default"
           >
-            <p>{analysis.reason ?? "No summary available."}</p>
+            <p>{analysis.summary}</p>
           </AnalysisCard>
 
           <AnalysisCard
-            title="Suggested Action"
-            icon={<MessageSquareReply className="h-4 w-4" />}
+            title="Action Items"
+            icon={<ListChecks className="h-4 w-4" />}
             accent="action"
           >
-            <p className="text-base font-semibold text-indigo-900">
-              {formatActionLabel(analysis.action)}
-            </p>
-            <p className="mt-1 text-xs text-indigo-700/80">{analysis.model_name}</p>
+            <ul className="space-y-1.5">
+              {analysis.action_items.map((item) => (
+                <li key={item} className="flex items-start gap-2 text-sm text-indigo-900">
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-indigo-400" />
+                  {item}
+                </li>
+              ))}
+            </ul>
           </AnalysisCard>
         </div>
       )}
