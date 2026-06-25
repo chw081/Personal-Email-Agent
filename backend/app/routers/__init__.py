@@ -1,3 +1,3 @@
-from app.routers import analysis, dev, emails
+from app.routers import analysis, dev, email_analysis, emails
 
-__all__ = ["analysis", "dev", "emails"]
+__all__ = ["analysis", "dev", "email_analysis", "emails"]

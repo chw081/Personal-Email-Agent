@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.db import Base, engine
 from app.models import Email, EmailAnalysis  # noqa: F401
-from app.routers import analysis, dev, emails
+from app.routers import analysis, dev, email_analysis, emails
 
 settings = get_settings()
 
@@ -34,6 +34,7 @@ app.add_middleware(
 
 app.include_router(emails.router)
 app.include_router(analysis.router)
+app.include_router(email_analysis.router)
 app.include_router(dev.router)
 
 
