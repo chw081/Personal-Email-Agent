@@ -3,6 +3,19 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class EmailAnalysisRequest(BaseModel):
+    subject: str
+    sender: str
+    snippet: str
+
+
+class EmailAnalysisResponse(BaseModel):
+    summary: str
+    priority: str
+    category: str
+    action_items: list[str]
+
+
 class EmailAnalysisCreate(BaseModel):
     domain: str
     subcategory: str

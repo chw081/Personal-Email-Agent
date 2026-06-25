@@ -1,4 +1,9 @@
-from app.schemas.analysis import EmailAnalysisCreate, EmailAnalysisRead
+from app.schemas.analysis import (
+    EmailAnalysisCreate,
+    EmailAnalysisRead,
+    EmailAnalysisRequest,
+    EmailAnalysisResponse,
+)
 from app.schemas.email import EmailCreate, EmailRead
 
 __all__ = [
@@ -6,4 +11,6 @@ __all__ = [
     "EmailRead",
     "EmailAnalysisCreate",
     "EmailAnalysisRead",
+    "EmailAnalysisRequest",
+    "EmailAnalysisResponse",
 ]
