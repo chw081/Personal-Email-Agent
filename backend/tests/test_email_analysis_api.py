@@ -55,6 +55,55 @@ class EmailAnalysisApiTests(unittest.TestCase):
         self.assertEqual(data["category"], "Career")
         self.assertEqual(data["action_items"], ["Review and respond if relevant."])
 
+    def test_bulk_analyze_returns_200_with_expected_shape(self) -> None:
+        payload = {
+            "emails": [
+                {
+                    "subject": "Interview invitation",
+                    "sender": "recruiter@company.example",
+                    "snippet": "Please confirm your interview slot.",
+                },
+                {
+                    "subject": "Invoice for March",
+                    "sender": "billing@vendor.example",
+                    "snippet": "Your invoice is ready.",
+                },
+            ]
+        }
+
+        response = client.post("/email-analysis/bulk-analyze", json=payload)
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("results", data)
+        self.assertEqual(len(data["results"]), 2)
+        self.assertEqual(data["results"][0]["original_email"]["subject"], "Interview invitation")
+        self.assertEqual(data["results"][0]["analysis"]["category"], "Career")
+        self.assertEqual(data["results"][1]["original_email"]["subject"], "Invoice for March")
+        self.assertEqual(data["results"][1]["analysis"]["category"], "Finance")
+
+    def test_bulk_analyze_empty_list_returns_empty_results(self) -> None:
+        response = client.post("/email-analysis/bulk-analyze", json={"emails": []})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"results": []})
+
+    def test_bulk_analyze_rejects_more_than_max_emails(self) -> None:
+        payload = {
+            "emails": [
+                {
+                    "subject": f"Email {index}",
+                    "sender": "sender@example.com",
+                    "snippet": "Preview text.",
+                }
+                for index in range(51)
+            ]
+        }
+
+        response = client.post("/email-analysis/bulk-analyze", json=payload)
+
+        self.assertEqual(response.status_code, 422)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

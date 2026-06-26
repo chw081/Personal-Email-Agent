@@ -1,6 +1,6 @@
 """Rule-based email analysis service."""
 
-from app.schemas.analysis import EmailAnalysisRequest, EmailAnalysisResponse
+from app.schemas.analysis import AnalyzedEmail, EmailAnalysisRequest, EmailAnalysisResponse
 
 HIGH_PRIORITY_KEYWORDS = ("urgent", "asap", "deadline", "interview", "action required")
 MEDIUM_PRIORITY_KEYWORDS = ("meeting", "schedule", "follow up", "invoice")
@@ -63,3 +63,11 @@ def analyze_email(email: EmailAnalysisRequest) -> EmailAnalysisResponse:
         category=category,
         action_items=_build_action_items(category),
     )
+
+
+def analyze_emails_bulk(emails: list[EmailAnalysisRequest]) -> list[AnalyzedEmail]:
+    """Analyze each email independently and preserve input order."""
+    return [
+        AnalyzedEmail(original_email=email, analysis=analyze_email(email))
+        for email in emails
+    ]

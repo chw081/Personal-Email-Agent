@@ -16,6 +16,22 @@ class EmailAnalysisResponse(BaseModel):
     action_items: list[str]
 
 
+BULK_EMAIL_ANALYSIS_MAX_SIZE = 50
+
+
+class BulkEmailAnalysisRequest(BaseModel):
+    emails: list[EmailAnalysisRequest] = Field(default_factory=list, max_length=BULK_EMAIL_ANALYSIS_MAX_SIZE)
+
+
+class AnalyzedEmail(BaseModel):
+    original_email: EmailAnalysisRequest
+    analysis: EmailAnalysisResponse
+
+
+class BulkEmailAnalysisResponse(BaseModel):
+    results: list[AnalyzedEmail]
+
+
 class EmailAnalysisCreate(BaseModel):
     domain: str
     subcategory: str
