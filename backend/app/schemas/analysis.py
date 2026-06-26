@@ -32,6 +32,14 @@ class BulkEmailAnalysisResponse(BaseModel):
     results: list[AnalyzedEmail]
 
 
+class InboxSummaryResponse(BaseModel):
+    total_emails: int
+    priority_counts: dict[str, int]
+    category_counts: dict[str, int]
+    top_action_items: list[str]
+    summary: str
+
+
 class EmailAnalysisCreate(BaseModel):
     domain: str
     subcategory: str
