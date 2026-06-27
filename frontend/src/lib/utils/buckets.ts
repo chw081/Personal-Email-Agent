@@ -1,4 +1,4 @@
-import type { Bucket, EmailAnalysis } from "@/lib/types/analysis";
+import type { Bucket, EmailAnalysis, EmailAnalysisResult } from "@/lib/types/analysis";
 
 export const BUCKET_LABELS: Record<Bucket, string> = {
   urgent: "Urgent",
@@ -23,6 +23,14 @@ export function getBucket(analysis: EmailAnalysis | null | undefined): Bucket {
   return "fyi";
 }
 
+export function getBucketFromResult(result: EmailAnalysisResult | null | undefined): Bucket {
+  if (!result) return "waiting";
+  if (result.priority === "High") return "urgent";
+  if (result.category === "Career") return "needs_reply";
+  if (result.category === "Finance") return "waiting";
+  return "fyi";
+}
+
 export function countByBucket(
   emailIds: string[],
   analyses: Record<string, EmailAnalysis | undefined>,
@@ -36,6 +44,24 @@ export function countByBucket(
 
   for (const id of emailIds) {
     counts[getBucket(analyses[id])] += 1;
+  }
+
+  return counts;
+}
+
+export function countByBucketFromResults(
+  emailIds: string[],
+  results: Record<string, EmailAnalysisResult | undefined>,
+): Record<Bucket, number> {
+  const counts: Record<Bucket, number> = {
+    urgent: 0,
+    needs_reply: 0,
+    waiting: 0,
+    fyi: 0,
+  };
+
+  for (const id of emailIds) {
+    counts[getBucketFromResult(results[id])] += 1;
   }
 
   return counts;

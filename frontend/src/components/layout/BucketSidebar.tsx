@@ -39,11 +39,11 @@ export function BucketSidebar({
   const buckets: Array<Bucket | "all"> = ["all", "urgent", "needs_reply", "waiting", "fyi"];
 
   return (
-    <aside className="flex h-full w-56 shrink-0 flex-col border-r border-slate-200 bg-slate-50/80">
-      <div className="border-b border-slate-200 px-4 py-4">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Buckets</p>
-      </div>
-      <nav className="flex-1 space-y-1 p-2">
+    <nav className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+      <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
+        Buckets
+      </p>
+      <div className="space-y-1">
         {buckets.map((bucket) => {
           const isActive = activeBucket === bucket;
           const label = bucket === "all" ? "All Mail" : BUCKET_LABELS[bucket];
@@ -57,10 +57,10 @@ export function BucketSidebar({
               type="button"
               onClick={() => onSelect(bucket)}
               title={bucket === "all" ? undefined : BUCKET_DESCRIPTIONS[bucket]}
-              className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left text-sm transition ${
+              className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition ${
                 isActive
                   ? `${colorClass} font-semibold shadow-sm ring-1 ring-indigo-200`
-                  : "border-transparent text-slate-600 hover:bg-white hover:shadow-sm"
+                  : "border-transparent text-slate-600 hover:bg-slate-50"
               }`}
             >
               <span className="flex items-center gap-2">
@@ -69,7 +69,7 @@ export function BucketSidebar({
               </span>
               <span
                 className={`rounded-full px-2 py-0.5 text-xs ${
-                  isActive ? "bg-white/80" : "bg-slate-200/80 text-slate-600"
+                  isActive ? "bg-white/80" : "bg-slate-100 text-slate-600"
                 }`}
               >
                 {count}
@@ -77,7 +77,7 @@ export function BucketSidebar({
             </button>
           );
         })}
-      </nav>
-    </aside>
+      </div>
+    </nav>
   );
 }

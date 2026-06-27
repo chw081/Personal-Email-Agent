@@ -7,11 +7,8 @@ import type { Email } from "@/lib/types/email";
 interface InboxListProps {
   emails: Email[];
   emailAnalysisResults: Record<string, EmailAnalysisResult | undefined>;
-  analyzingEmailIds: Record<string, boolean>;
-  analysisErrors: Record<string, string | null>;
   selectedEmailId: string | null;
   onSelect: (emailId: string) => void;
-  onAnalyzeEmail: (email: Email) => void;
   isLoading?: boolean;
   error?: string | null;
   onRetry?: () => void;
@@ -21,11 +18,8 @@ interface InboxListProps {
 export function InboxList({
   emails,
   emailAnalysisResults,
-  analyzingEmailIds,
-  analysisErrors,
   selectedEmailId,
   onSelect,
-  onAnalyzeEmail,
   isLoading = false,
   error = null,
   onRetry,
@@ -76,11 +70,8 @@ export function InboxList({
           key={email.id}
           email={email}
           analysisResult={emailAnalysisResults[email.id]}
-          isAnalyzing={Boolean(analyzingEmailIds[email.id])}
-          analysisError={analysisErrors[email.id] ?? null}
           isSelected={email.id === selectedEmailId}
           onSelect={() => onSelect(email.id)}
-          onAnalyze={() => onAnalyzeEmail(email)}
         />
       ))}
     </div>
