@@ -15,6 +15,27 @@ export interface EmailAnalysisResult {
   action_items: string[];
 }
 
+export interface BulkEmailAnalysisRequest {
+  emails: EmailAnalysisRequest[];
+}
+
+export interface AnalyzedEmail {
+  original_email: EmailAnalysisRequest;
+  analysis: EmailAnalysisResult;
+}
+
+export interface BulkEmailAnalysisResponse {
+  results: AnalyzedEmail[];
+}
+
+export interface InboxSummaryResponse {
+  total_emails: number;
+  priority_counts: Record<string, number>;
+  category_counts: Record<string, number>;
+  top_action_items: string[];
+  summary: string;
+}
+
 export interface EmailAnalysis {
   id: string;
   email_id: string;

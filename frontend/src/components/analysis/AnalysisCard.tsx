@@ -5,6 +5,7 @@ interface AnalysisCardProps {
   icon: ReactNode;
   children: ReactNode;
   accent?: "default" | "urgent" | "action";
+  className?: string;
 }
 
 const ACCENTS = {
@@ -18,14 +19,15 @@ export function AnalysisCard({
   icon,
   children,
   accent = "default",
+  className = "",
 }: AnalysisCardProps) {
   return (
-    <div className={`rounded-xl border p-4 shadow-sm ${ACCENTS[accent]}`}>
+    <div className={`min-w-0 rounded-xl border p-4 shadow-sm ${ACCENTS[accent]} ${className}`}>
       <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-600">
-        <span className="text-slate-400">{icon}</span>
+        <span className="shrink-0 text-slate-400">{icon}</span>
         {title}
       </div>
-      <div className="text-sm leading-relaxed text-slate-900">{children}</div>
+      <div className="min-w-0 text-sm leading-relaxed break-words text-slate-900">{children}</div>
     </div>
   );
 }

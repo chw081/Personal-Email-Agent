@@ -5,19 +5,26 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnalysisPanel } from "@/components/analysis/AnalysisPanel";
 import { EmailDetail } from "@/components/inbox/EmailDetail";
 import { InboxList } from "@/components/inbox/InboxList";
+import { InboxSummaryCard } from "@/components/inbox/InboxSummaryCard";
 import { BucketSidebar } from "@/components/layout/BucketSidebar";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
-import { analyzeEmailContent } from "@/lib/api/analysis";
+import {
+  analyzeEmailContent,
+  bulkAnalyzeEmails,
+  emailsToBulkRequest,
+  generateInboxSummary,
+} from "@/lib/api/analysis";
 import { ApiError, isMockMode } from "@/lib/api/client";
 import { fetchRecentGmailEmails } from "@/lib/api/gmail";
-import {
-  MOCK_ANALYSES,
-  MOCK_EMAILS,
-  mockAnalyzeEmailContent,
-} from "@/lib/mock/emails";
-import type { Bucket, EmailAnalysis, EmailAnalysisResult } from "@/lib/types/analysis";
+import { MOCK_EMAILS, mockAnalyzeEmailContent } from "@/lib/mock/emails";
+import type { Bucket, EmailAnalysisResult, InboxSummaryResponse } from "@/lib/types/analysis";
 import type { Email } from "@/lib/types/email";
-import { countByBucket, getBucket, BUCKET_LABELS } from "@/lib/utils/buckets";
+import {
+  BUCKET_LABELS,
+  countByBucketFromResults,
+  getBucketFromResult,
+} from "@/lib/utils/buckets";
+import { computeInboxStats } from "@/lib/utils/inbox-stats";
 
 export function Dashboard() {
   const mockMode = isMockMode();
@@ -25,14 +32,21 @@ export function Dashboard() {
   const [emails, setEmails] = useState<Email[]>(() =>
     mockMode ? MOCK_EMAILS : [],
   );
-  const [analyses, setAnalyses] = useState<Record<string, EmailAnalysis>>(() =>
-    mockMode ? { ...MOCK_ANALYSES } : {},
-  );
   const [emailAnalysisResults, setEmailAnalysisResults] = useState<
     Record<string, EmailAnalysisResult>
-  >({});
+  >(() =>
+    mockMode
+      ? Object.fromEntries(
+          MOCK_EMAILS.map((email) => [email.id, mockAnalyzeEmailContent(email)]),
+        )
+      : {},
+  );
   const [analyzingEmailIds, setAnalyzingEmailIds] = useState<Record<string, boolean>>({});
-  const [analysisErrors, setAnalysisErrors] = useState<Record<string, string | null>>({});
+  const [inboxSummary, setInboxSummary] = useState<InboxSummaryResponse | null>(null);
+  const [isAnalyzingInbox, setIsAnalyzingInbox] = useState(false);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(
     mockMode ? (MOCK_EMAILS[0]?.id ?? null) : null,
   );
@@ -44,15 +58,24 @@ export function Dashboard() {
   const selectedAnalysis = selectedEmailId ? emailAnalysisResults[selectedEmailId] ?? null : null;
   const isAnalyzingSelected = selectedEmailId ? Boolean(analyzingEmailIds[selectedEmailId]) : false;
 
+  const emailIds = useMemo(() => emails.map((email) => email.id), [emails]);
+
+  const inboxStats = useMemo(
+    () => computeInboxStats(emailIds, emailAnalysisResults),
+    [emailIds, emailAnalysisResults],
+  );
+
   const bucketCounts = useMemo(
-    () => countByBucket(emails.map((e) => e.id), analyses),
-    [emails, analyses],
+    () => countByBucketFromResults(emailIds, emailAnalysisResults),
+    [emailIds, emailAnalysisResults],
   );
 
   const filteredEmails = useMemo(() => {
     if (activeBucket === "all") return emails;
-    return emails.filter((email) => getBucket(analyses[email.id]) === activeBucket);
-  }, [activeBucket, analyses, emails]);
+    return emails.filter(
+      (email) => getBucketFromResult(emailAnalysisResults[email.id]) === activeBucket,
+    );
+  }, [activeBucket, emailAnalysisResults, emails]);
 
   const loadGmailEmails = useCallback(async () => {
     setIsLoading(true);
@@ -91,7 +114,6 @@ export function Dashboard() {
   const handleAnalyzeEmail = useCallback(
     async (email: Email) => {
       setAnalyzingEmailIds((prev) => ({ ...prev, [email.id]: true }));
-      setAnalysisErrors((prev) => ({ ...prev, [email.id]: null }));
 
       try {
         let result: EmailAnalysisResult;
@@ -108,14 +130,6 @@ export function Dashboard() {
         }
 
         setEmailAnalysisResults((prev) => ({ ...prev, [email.id]: result }));
-      } catch (err) {
-        const message =
-          err instanceof ApiError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : "Failed to analyze email";
-        setAnalysisErrors((prev) => ({ ...prev, [email.id]: message }));
       } finally {
         setAnalyzingEmailIds((prev) => ({ ...prev, [email.id]: false }));
       }
@@ -128,23 +142,91 @@ export function Dashboard() {
     await handleAnalyzeEmail(selectedEmail);
   }, [handleAnalyzeEmail, selectedEmail]);
 
+  const handleAnalyzeInbox = useCallback(async () => {
+    if (emails.length === 0) return;
+
+    setIsAnalyzingInbox(true);
+    setBulkError(null);
+
+    try {
+      const response = await bulkAnalyzeEmails(emailsToBulkRequest(emails));
+
+      setEmailAnalysisResults((prev) => {
+        const next = { ...prev };
+        response.results.forEach((result, index) => {
+          const email = emails[index];
+          if (email) {
+            next[email.id] = result.analysis;
+          }
+        });
+        return next;
+      });
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Failed to analyze inbox";
+      setBulkError(message);
+    } finally {
+      setIsAnalyzingInbox(false);
+    }
+  }, [emails]);
+
+  const handleGenerateSummary = useCallback(async () => {
+    if (emails.length === 0) return;
+
+    setIsGeneratingSummary(true);
+    setSummaryError(null);
+
+    try {
+      const summary = await generateInboxSummary(emailsToBulkRequest(emails));
+      setInboxSummary(summary);
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Failed to generate inbox summary";
+      setSummaryError(message);
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  }, [emails]);
+
   return (
-    <div className="flex h-screen flex-col bg-slate-100">
+    <div className="flex min-h-screen flex-col bg-slate-100 lg:h-screen lg:overflow-hidden">
       <DashboardHeader
         emailCount={emails.length}
-        analyzedCount={Object.keys(emailAnalysisResults).length}
+        analyzedCount={inboxStats.analyzed}
         isMockMode={mockMode}
       />
 
-      <div className="flex min-h-0 flex-1">
-        <BucketSidebar
-          activeBucket={activeBucket}
-          counts={bucketCounts}
-          totalCount={emails.length}
-          onSelect={setActiveBucket}
-        />
+      <div className="grid flex-1 grid-cols-1 gap-4 p-4 md:grid-cols-2 md:gap-6 lg:min-h-0 lg:grid-cols-[minmax(220px,260px)_minmax(280px,1fr)_minmax(320px,1.4fr)] lg:gap-6 lg:overflow-hidden">
+        {/* Left column: overview + buckets */}
+        <aside className="order-1 flex flex-col gap-4 md:order-1 md:col-span-2 lg:col-span-1 lg:min-h-0 lg:overflow-y-auto">
+          <InboxSummaryCard
+            stats={inboxStats}
+            inboxSummary={inboxSummary}
+            isAnalyzingInbox={isAnalyzingInbox}
+            isGeneratingSummary={isGeneratingSummary}
+            bulkError={bulkError}
+            summaryError={summaryError}
+            onAnalyzeInbox={handleAnalyzeInbox}
+            onGenerateSummary={handleGenerateSummary}
+          />
+          <BucketSidebar
+            activeBucket={activeBucket}
+            counts={bucketCounts}
+            totalCount={emails.length}
+            onSelect={setActiveBucket}
+          />
+        </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col border-r border-slate-200 bg-white">
+        {/* Middle column: inbox list */}
+        <section className="order-3 flex min-h-[320px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm md:order-3 md:min-h-0 lg:order-2">
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <h2 className="text-sm font-semibold text-slate-800">
               {activeBucket === "all" ? "Inbox" : BUCKET_LABELS[activeBucket]}
@@ -163,11 +245,8 @@ export function Dashboard() {
           <InboxList
             emails={filteredEmails}
             emailAnalysisResults={emailAnalysisResults}
-            analyzingEmailIds={analyzingEmailIds}
-            analysisErrors={analysisErrors}
             selectedEmailId={selectedEmailId}
             onSelect={setSelectedEmailId}
-            onAnalyzeEmail={handleAnalyzeEmail}
             isLoading={isLoading}
             error={error}
             onRetry={mockMode ? undefined : loadGmailEmails}
@@ -177,20 +256,21 @@ export function Dashboard() {
                 : "No emails in this bucket."
             }
           />
-        </div>
+        </section>
 
-        <div className="flex min-w-0 flex-[1.4] flex-col gap-4 overflow-hidden p-4">
-          <div className="min-h-0 flex-[1.2]">
+        {/* Right column: selected email + AI analysis */}
+        <section className="order-4 flex min-h-0 min-w-0 flex-col gap-4 md:order-4 md:col-span-2 md:gap-6 lg:order-3 lg:col-span-1 lg:overflow-hidden">
+          <div className="min-h-[200px] shrink-0 lg:max-h-[45%] lg:min-h-0">
             <EmailDetail email={selectedEmail} />
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex min-h-[240px] min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
             <AnalysisPanel
               analysis={selectedAnalysis}
               isAnalyzing={isAnalyzingSelected}
               onAnalyze={handleAnalyze}
             />
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

@@ -1,10 +1,46 @@
 import { apiFetch } from "@/lib/api/client";
-import type { EmailAnalysis, EmailAnalysisRequest, EmailAnalysisResult } from "@/lib/types/analysis";
+import type {
+  BulkEmailAnalysisRequest,
+  BulkEmailAnalysisResponse,
+  EmailAnalysis,
+  EmailAnalysisRequest,
+  EmailAnalysisResult,
+  InboxSummaryResponse,
+} from "@/lib/types/analysis";
+import type { Email } from "@/lib/types/email";
+
+export function emailsToBulkRequest(emails: Email[]): BulkEmailAnalysisRequest {
+  return {
+    emails: emails.map((email) => ({
+      subject: email.subject,
+      sender: email.sender,
+      snippet: email.snippet ?? "",
+    })),
+  };
+}
 
 export async function analyzeEmailContent(
   payload: EmailAnalysisRequest,
 ): Promise<EmailAnalysisResult> {
   return apiFetch<EmailAnalysisResult>("/email-analysis/analyze", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function bulkAnalyzeEmails(
+  payload: BulkEmailAnalysisRequest,
+): Promise<BulkEmailAnalysisResponse> {
+  return apiFetch<BulkEmailAnalysisResponse>("/email-analysis/bulk-analyze", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function generateInboxSummary(
+  payload: BulkEmailAnalysisRequest,
+): Promise<InboxSummaryResponse> {
+  return apiFetch<InboxSummaryResponse>("/email-analysis/inbox-summary", {
     method: "POST",
     body: JSON.stringify(payload),
   });
