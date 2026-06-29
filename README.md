@@ -1,234 +1,289 @@
 # Personal Email Agent
 
-An AI-powered email management application that helps users organize, prioritize, and understand their inbox.
+An AI-powered email management application that helps users organize, prioritize, and understand their inbox. Built as a full-stack project with a Next.js frontend and a FastAPI backend.
 
-## Overview
-
-Managing thousands of emails can quickly become overwhelming. Personal Email Agent is a full-stack application designed to help users process large inboxes more efficiently through email classification, summarization, prioritization, and eventually AI-driven actions.
-
-The long-term vision is to build an intelligent email agent that can understand inbox context, identify important messages, draft responses, and help users stay organized.
+> **Status:** Active development — not production-ready. Gmail integration and analysis work locally as an MVP; advanced AI, persistence, and production auth are planned.
 
 ---
 
-## Features
+## Overview
 
-### Current Features
+Managing a large inbox is time-consuming. Important messages get buried, follow-ups are missed, and low-value mail competes for attention.
 
-* Full-stack architecture
-* FastAPI backend
-* Next.js frontend
-* Email data models and schemas
-* Mock email dataset for development
-* Email classification service
-* Modular API architecture
-* Database integration with SQLAlchemy
-* Health check and development endpoints
+**Personal Email Agent** is a full-stack application designed to reduce that friction. Today it connects to Gmail, displays real inbox messages in a dashboard, and applies rule-based analysis to help users spot priority, category, and suggested actions. The long-term goal is to evolve this into a **personal email agent** — software that understands inbox context, surfaces what matters, drafts responses, and recommends next steps while keeping the user in control.
 
-### Planned Features
+This repository is intentionally structured so analysis, Gmail integration, and UI can improve incrementally without rewriting the whole stack.
 
-* Gmail OAuth integration
-* Real Gmail message synchronization
-* OpenAI-powered email analysis
-* AI-generated summaries
-* Suggested actions and reply drafts
-* Inbox prioritization
-* Follow-up tracking
-* Agent workflows for inbox management
+---
+
+## Current Features
+
+### Gmail & inbox
+
+- **Gmail OAuth (local)** — read-only OAuth flow using a Google Cloud Desktop client
+- **Real Gmail retrieval** — fetches recent inbox messages via the Gmail API
+- **Frontend dashboard** — responsive layout with inbox list, selected email detail, inbox overview, and per-email AI analysis
+- **Refresh inbox** — reload recent Gmail messages from the dashboard
+
+### Analysis (MVP)
+
+- **Single-email analysis** — `POST /email-analysis/analyze`
+- **Bulk inbox analysis** — `POST /email-analysis/bulk-analyze`
+- **Inbox summary** — `POST /email-analysis/inbox-summary` (priority/category counts and a short summary sentence)
+- **Rule-based classifier** — keyword-driven priority, category, summary, and action items (not LLM-powered yet)
+- **Selected email AI Analysis panel** — analyze or re-analyze the currently selected message
+
+### Backend architecture
+
+- **Layered FastAPI design** — routers, services, schemas, and models
+- **Stable API contracts** — Pydantic schemas for request/response shapes
+- **Gmail logic in the service layer** — OAuth and API calls isolated from HTTP handlers
+- **SQLAlchemy + SQLite** — database models and dev endpoints (email persistence is not yet synced with Gmail)
+- **Interactive API docs** — Swagger UI at `/docs`
+
+### Developer experience
+
+- Mock email mode for frontend development (`NEXT_PUBLIC_USE_MOCK_DATA=true`)
+- Unit and API tests for analysis and Gmail services
+- Environment-based configuration (no hardcoded machine paths)
+
+---
+
+## Current Limitations
+
+Be aware of what this project **does not** do yet:
+
+| Area | Limitation |
+|------|------------|
+| **Analysis** | Categorization is basic and rule-based (keywords), not OpenAI-powered |
+| **Email content** | UI and analysis rely mainly on **snippets**, not full MIME/body parsing |
+| **Attachments** | Attachments and inline images are not parsed or displayed |
+| **Auth** | No production user authentication or multi-user support |
+| **Persistence** | Gmail messages are fetched on demand; they are **not** synced to the database |
+| **AI agent** | No autonomous workflows, reply drafting, or follow-up tracking yet |
+| **Deployment** | Local development only — no hosted demo or production deployment |
+
+OpenAI-powered analysis, richer parsing, database sync, and agent workflows are on the roadmap.
 
 ---
 
 ## Tech Stack
 
-### Frontend
-
-* Next.js
-* React
-* TypeScript
-* Tailwind CSS
-
-### Backend
-
-* Python
-* FastAPI
-* SQLAlchemy
-* Pydantic
-* SQLite
-* OpenAI SDK
-* Google Gmail API
-
----
-
-## Project Structure
-
-The project follows a layered architecture that separates presentation, API handling, business logic, and data models. This design makes the system easier to maintain and allows future integrations (such as Gmail sync and OpenAI-powered analysis) without requiring major changes to the frontend.
-
-```text
-Personal-Email-Agent/
-├── frontend/
-│   ├── src/
-│   │   ├── app/          # Next.js pages and routing
-│   │   ├── components/   # Reusable UI components
-│   │   └── lib/          # Frontend utilities and API helpers
-│   └── package.json
-│
-├── backend/
-│   ├── app/
-│   │   ├── models/       # Database models and persistence layer
-│   │   ├── schemas/      # API request/response contracts
-│   │   ├── routers/      # HTTP endpoints grouped by domain
-│   │   ├── services/     # Business logic and external integrations
-│   │   ├── config.py     # Application configuration
-│   │   ├── db.py         # Database initialization
-│   │   └── main.py       # FastAPI application entry point
-│   └── requirements.txt
-│
-└── README.md
-```
-
-A key design goal is to keep API contracts stable while allowing internal implementations to evolve. For example, mock email data can later be replaced with Gmail synchronization, and the current classifier can be replaced with an OpenAI-powered analysis service without requiring significant frontend changes.
-
----
-
-## Getting Started
-
-### Backend
-
-```bash
-cd backend
-
-python -m venv .venv
-source .venv/bin/activate
-
-pip install -r requirements.txt
-
-uvicorn app.main:app --reload
-```
-
-Backend runs at:
-
-```text
-http://127.0.0.1:8000
-```
-
-API documentation:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-### Frontend
-
-```bash
-cd frontend
-
-npm install
-npm run dev
-```
-
-Frontend runs at:
-
-```text
-http://localhost:3000
-```
-
----
-
-## Development Roadmap
-
-### Phase 1 — Foundation
-
-* [x] FastAPI backend
-* [x] Next.js frontend
-* [x] Database models
-* [x] API routes
-* [x] Mock email data
-* [x] Email classification architecture
-
-### Phase 2 — Product Integration
-
-* [ ] Connect frontend to backend APIs
-* [ ] Display live email analysis
-* [ ] Improve dashboard experience
-* [ ] Add loading and error states
-
-### Phase 3 — Real Email Support
-
-* [ ] Gmail OAuth
-* [ ] Gmail synchronization service
-* [ ] Real inbox ingestion
-
-### Phase 4 — AI-Powered Analysis
-
-* [ ] OpenAI email classification
-* [ ] Email summarization
-* [ ] Action item extraction
-* [ ] Priority detection
-* [ ] Suggested responses
-
-### Phase 5 — Agent Workflows
-
-* [ ] Inbox processing agent
-* [ ] Follow-up tracking
-* [ ] Reply drafting
-* [ ] Calendar event suggestions
-* [ ] Personalized email management
+| Layer | Technologies |
+|-------|----------------|
+| **Frontend** | Next.js, React, TypeScript, Tailwind CSS |
+| **Backend** | Python, FastAPI, Pydantic, SQLAlchemy, SQLite |
+| **Integrations** | Google Gmail API, Google OAuth (read-only) |
+| **Planned** | OpenAI SDK (dependency present; not fully wired into analysis yet) |
 
 ---
 
 ## Architecture
 
 ```text
-Next.js Frontend
+Next.js Dashboard (frontend)
         │
+        │  HTTP — stable JSON API contracts
         ▼
-FastAPI Backend
-        │
-        ├── Email Router
-        ├── Analysis Router
-        └── Development Router
+FastAPI Routers
+  ├── /dev/gmail/recent      → recent inbox messages
+  ├── /email-analysis/*      → analyze, bulk-analyze, inbox-summary
+  ├── /emails                → CRUD (database-backed)
+  └── /dev/seed              → mock data for development
         │
         ▼
 Service Layer
-        │
-        ├── Mock Data Service
-        ├── Classifier Service
-        └── Gmail Service (planned)
+  ├── gmail_service          → OAuth, token refresh, Gmail API calls
+  ├── email_analysis_service → rule-based per-email analysis
+  ├── inbox_summary_service  → aggregate stats from analyzed results
+  └── classifier_service     → legacy DB-backed classifier (separate path)
         │
         ▼
-Database
+Schemas (API contracts)  ·  Models (persistence)
 ```
 
-The system is designed around clear separation of concerns:
+### Design principles
 
-* **Frontend** handles user interaction and presentation.
-* **Routers** expose API endpoints and coordinate requests.
-* **Services** contain business logic and external integrations.
-* **Schemas** define typed API contracts between frontend and backend.
-* **Models** represent how data is stored and persisted.
-
-This layered approach improves maintainability, testability, and extensibility. New capabilities such as Gmail integration, AI-powered classification, reply generation, and agent workflows can be added primarily within the service layer while preserving existing APIs and frontend behavior.
-
-The architecture is intentionally designed to support the evolution from a traditional web application into an AI-powered email agent. Current implementations use mock email data and a basic classification pipeline, but the same interfaces can later support real inbox synchronization, LLM-powered analysis, task extraction, and autonomous email-management workflows.
+- **Frontend / backend separation** — the dashboard calls backend REST endpoints; it does not talk to Gmail directly.
+- **Routers stay thin** — validate input, call services, return schema-typed responses.
+- **Services own business logic** — Gmail OAuth, message fetching, and analysis rules live here.
+- **Schemas define contracts** — frontend and backend agree on shapes like `EmailAnalysisRequest`, `BulkEmailAnalysisResponse`, and `InboxSummaryResponse`.
+- **Models are for persistence** — SQLAlchemy models support stored emails/analyses; Gmail fetch is separate from DB sync today.
+- **Gmail specifics stay internal** — the frontend consumes normalized API responses (e.g. mapped `Email` objects), not raw Gmail API payloads.
 
 ---
 
-## Current Status
+## Project Structure
 
-This project is currently in active development.
+```text
+Personal-Email-Agent/
+├── frontend/
+│   ├── src/
+│   │   ├── app/              # Next.js App Router pages
+│   │   ├── components/       # Dashboard, inbox, analysis UI
+│   │   └── lib/              # API client, types, utilities
+│   ├── .env.example          # Copy to .env.local
+│   └── package.json
+│
+├── backend/
+│   ├── app/
+│   │   ├── routers/          # HTTP endpoints
+│   │   ├── services/         # Gmail, analysis, mock data
+│   │   ├── schemas/          # Pydantic request/response models
+│   │   ├── models/           # SQLAlchemy database models
+│   │   ├── config.py         # Settings from environment
+│   │   ├── db.py             # Database session setup
+│   │   └── main.py           # FastAPI app entry point
+│   ├── tests/
+│   ├── .example.env          # Copy to .env
+│   └── requirements.txt
+│
+└── README.md
+```
 
-The backend architecture, database models, API structure, and frontend foundation have been completed. The next milestone is connecting the frontend with backend APIs and integrating real Gmail data.
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.11+
+- Node.js 20+
+- A Google Cloud project with the **Gmail API** enabled
+- OAuth **Desktop app** credentials (`credentials.json`)
+
+### 1. Backend setup
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .example.env .env
+uvicorn app.main:app --reload
+```
+
+Backend: [http://127.0.0.1:8000](http://127.0.0.1:8000)  
+API docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+### 2. Gmail OAuth credentials
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create or select a project.
+2. Enable the **Gmail API**.
+3. Configure the **OAuth consent screen** (External or Internal for workspace testing).
+4. Create **OAuth 2.0 Client ID** → Application type: **Desktop app**.
+5. Download the JSON file and save it as:
+
+```text
+backend/credentials.json
+```
+
+**Do not commit `credentials.json` or `token.json`.** Both are listed in `.gitignore`.
+
+On first successful Gmail access, the backend runs the OAuth flow in your browser and writes a refresh token to:
+
+```text
+backend/token.json
+```
+
+You can override paths via `.env`:
+
+```env
+GMAIL_CREDENTIALS_PATH=credentials.json
+GMAIL_TOKEN_PATH=token.json
+```
+
+### 3. Frontend setup
+
+```bash
+cd frontend
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+Frontend: [http://localhost:3000](http://localhost:3000)
+
+Default `.env.local`:
+
+```env
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+NEXT_PUBLIC_USE_MOCK_DATA=false
+```
+
+Set `NEXT_PUBLIC_USE_MOCK_DATA=true` to use local mock emails without calling Gmail.
+
+### 4. Try the dashboard
+
+1. Start backend and frontend.
+2. Open the dashboard — recent Gmail messages load automatically (or mock data if enabled).
+3. Select an email to view detail and run **AI Analysis** on the selected message.
+4. Use **Analyze Inbox** or **Generate Summary** in the inbox overview panel for bulk operations.
+
+---
+
+## Key API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/dev/gmail/recent?limit=5` | Fetch recent Gmail inbox messages |
+| `POST` | `/email-analysis/analyze` | Analyze a single email (subject, sender, snippet) |
+| `POST` | `/email-analysis/bulk-analyze` | Analyze up to 50 emails in one request |
+| `POST` | `/email-analysis/inbox-summary` | Analyze emails and return inbox-level summary |
+| `GET` | `/health` | Health check |
+
+---
+
+## Roadmap
+
+### Completed (foundation)
+
+- [x] FastAPI backend with layered architecture
+- [x] Next.js dashboard with inbox, detail, overview, and analysis UI
+- [x] Gmail OAuth and real inbox retrieval (local)
+- [x] Rule-based analysis and inbox summary endpoints
+- [x] Frontend integration with backend APIs
+
+### In progress / next
+
+- [ ] Improve responsive UI polish across breakpoints
+- [ ] Richer email parsing (full bodies, not just snippets)
+- [ ] Attachment and inline image support
+- [ ] Replace rule-based classifier with OpenAI-powered analysis
+- [ ] Database persistence and Gmail message sync
+- [ ] Production authentication and multi-user support
+
+### Future
+
+- [ ] Agent workflows (triage, follow-ups, draft replies)
+- [ ] Calendar and task integrations
+- [ ] Production deployment and observability
+
+---
+
+## Testing
+
+From `backend/` with the virtual environment active:
+
+```bash
+python -m unittest discover -s tests -v
+```
 
 ---
 
 ## Future Vision
 
-The goal is to evolve this project from an email analysis application into a true AI email agent capable of:
+The goal is to grow Personal Email Agent from an inbox analysis tool into a **trustworthy personal email agent** that:
 
-* Understanding inbox context
-* Prioritizing important messages
-* Drafting replies
-* Tracking follow-ups
-* Recommending actions
-* Helping users manage communication more efficiently
+- Understands context across threads and senders
+- Prioritizes time-sensitive and high-value mail
+- Suggests actions and drafts (with human approval)
+- Tracks follow-ups and reduces inbox noise
 
-while keeping humans in control of all final decisions.
+All automation is intended to assist — not replace — the user's judgment.
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for details.
