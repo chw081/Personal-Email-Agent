@@ -5,7 +5,8 @@ export type Bucket = "urgent" | "needs_reply" | "waiting" | "fyi";
 export interface EmailAnalysisRequest {
   subject: string;
   sender: string;
-  snippet: string;
+  snippet?: string;
+  body?: string | null;
 }
 
 export interface EmailAnalysisResult {

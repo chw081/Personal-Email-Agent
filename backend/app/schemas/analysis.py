@@ -6,7 +6,11 @@ from pydantic import BaseModel, ConfigDict, Field
 class EmailAnalysisRequest(BaseModel):
     subject: str
     sender: str
-    snippet: str
+    snippet: str = ""
+    body: str | None = Field(
+        default=None,
+        description="Full extracted email body; preferred over snippet for analysis when present.",
+    )
 
 
 class EmailAnalysisResponse(BaseModel):

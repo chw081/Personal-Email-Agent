@@ -15,6 +15,7 @@ from googleapiclient.discovery import Resource, build
 from googleapiclient.errors import HttpError
 
 from app.config import get_settings
+from app.services.gmail_content import extract_message_content
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +28,12 @@ GmailMessage = TypedDict(
         "gmail_id": str,
         "thread_id": str,
         "from": str,
+        "recipients": str,
         "subject": str,
         "date": str,
         "snippet": str,
+        "body_text": str,
+        "has_attachment": bool,
         "internal_date_ms": int,
     },
 )
@@ -143,14 +147,18 @@ def _format_date(message: dict, headers: list[dict[str, str]]) -> str:
 def _format_message(message: dict) -> GmailMessage:
     payload = message.get("payload", {})
     headers = payload.get("headers", [])
+    body_text, has_attachment = extract_message_content(payload)
 
     return {
         "gmail_id": message.get("id", ""),
         "thread_id": message.get("threadId", ""),
         "from": _header_value(headers, "From"),
+        "recipients": _header_value(headers, "To"),
         "subject": _header_value(headers, "Subject"),
         "date": _format_date(message, headers),
         "snippet": message.get("snippet", ""),
+        "body_text": body_text,
+        "has_attachment": has_attachment,
         "internal_date_ms": _internal_date_ms(message),
     }
 
@@ -163,8 +171,7 @@ def _fetch_message(service: Resource, message_id: str) -> GmailMessage:
             .get(
                 userId="me",
                 id=message_id,
-                format="metadata",
-                metadataHeaders=["From", "Subject", "Date"],
+                format="full",
             )
             .execute()
         )

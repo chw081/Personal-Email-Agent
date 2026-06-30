@@ -13,8 +13,16 @@ SUMMARY_MAX_LENGTH = 180
 EMPTY_SUMMARY = "No useful preview available."
 
 
+def _analysis_content(email: EmailAnalysisRequest) -> str:
+    """Prefer extracted body text over Gmail snippet for classification."""
+    body = (email.body or "").strip()
+    if body:
+        return body
+    return email.snippet.strip()
+
+
 def _combined_text(email: EmailAnalysisRequest) -> str:
-    return " ".join((email.subject, email.sender, email.snippet)).lower()
+    return " ".join((email.subject, email.sender, _analysis_content(email))).lower()
 
 
 def _determine_priority(text: str) -> str:
@@ -58,7 +66,7 @@ def analyze_email(email: EmailAnalysisRequest) -> EmailAnalysisResponse:
     category = _determine_category(text)
 
     return EmailAnalysisResponse(
-        summary=_build_summary(email.snippet),
+        summary=_build_summary(_analysis_content(email)),
         priority=_determine_priority(text),
         category=category,
         action_items=_build_action_items(category),

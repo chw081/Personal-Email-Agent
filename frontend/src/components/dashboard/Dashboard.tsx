@@ -25,6 +25,7 @@ import {
   getBucketFromResult,
 } from "@/lib/utils/buckets";
 import { computeInboxStats } from "@/lib/utils/inbox-stats";
+import { emailToAnalysisRequest } from "@/lib/utils/gmail";
 
 export function Dashboard() {
   const mockMode = isMockMode();
@@ -122,11 +123,7 @@ export function Dashboard() {
           await new Promise((resolve) => setTimeout(resolve, 500));
           result = mockAnalyzeEmailContent(email);
         } else {
-          result = await analyzeEmailContent({
-            subject: email.subject,
-            sender: email.sender,
-            snippet: email.snippet ?? "",
-          });
+          result = await analyzeEmailContent(emailToAnalysisRequest(email));
         }
 
         setEmailAnalysisResults((prev) => ({ ...prev, [email.id]: result }));

@@ -10,9 +10,12 @@ class GmailRecentEmail(BaseModel):
         validation_alias=AliasChoices("from", "sender"),
         serialization_alias="from",
     )
+    recipients: str = ""
     subject: str = ""
     date: str = ""
     snippet: str = ""
+    body_text: str = ""
+    has_attachment: bool = False
     internal_date_ms: int = 0
 
 

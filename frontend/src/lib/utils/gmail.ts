@@ -26,9 +26,12 @@ export function normalizeGmailRecentEmail(raw: GmailRecentEmailRaw): GmailRecent
     gmail_id: withFallback(raw.gmail_id, ""),
     thread_id: withFallback(raw.thread_id, ""),
     from: fromValue,
+    recipients: withFallback(raw.recipients, ""),
     subject: withFallback(raw.subject, ""),
     date: withFallback(raw.date, ""),
     snippet: withFallback(raw.snippet, ""),
+    body_text: withFallback(raw.body_text, ""),
+    has_attachment: Boolean(raw.has_attachment),
     internal_date_ms: raw.internal_date_ms ?? 0,
   };
 }
@@ -38,6 +41,9 @@ export function mapGmailToEmail(gmailEmail: GmailRecentEmail): Email {
   const fromRaw = decodeHtmlEntities(normalized.from);
   const { sender, senderEmail } = parseSender(fromRaw);
   const timestamp = new Date().toISOString();
+  const snippet = decodeHtmlEntities(withFallback(normalized.snippet, "")) || null;
+  const bodyText =
+    decodeHtmlEntities(withFallback(normalized.body_text, "")) || snippet;
 
   return {
     id: normalized.gmail_id,
@@ -46,11 +52,11 @@ export function mapGmailToEmail(gmailEmail: GmailRecentEmail): Email {
     sender: withFallback(sender, "Unknown sender"),
     sender_email: senderEmail,
     subject: decodeHtmlEntities(withFallback(normalized.subject, "(No subject)")),
-    snippet: decodeHtmlEntities(withFallback(normalized.snippet, "")) || null,
-    body_text: decodeHtmlEntities(withFallback(normalized.snippet, "")) || null,
+    snippet,
+    body_text: bodyText,
     received_at: normalized.date ? normalized.date : null,
     is_unread: true,
-    has_attachment: false,
+    has_attachment: normalized.has_attachment ?? false,
     gmail_labels: ["INBOX"],
     created_at: timestamp,
     updated_at: timestamp,
@@ -59,4 +65,16 @@ export function mapGmailToEmail(gmailEmail: GmailRecentEmail): Email {
 
 export function mapGmailResponseToEmails(emails: GmailRecentEmailRaw[]): Email[] {
   return emails.map((email) => mapGmailToEmail(normalizeGmailRecentEmail(email)));
+}
+
+export function emailToAnalysisRequest(email: Email) {
+  const body = email.body_text?.trim();
+  const snippet = email.snippet?.trim() ?? "";
+
+  return {
+    subject: email.subject,
+    sender: email.sender,
+    snippet,
+    ...(body ? { body } : {}),
+  };
 }

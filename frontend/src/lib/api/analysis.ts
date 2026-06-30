@@ -8,14 +8,11 @@ import type {
   InboxSummaryResponse,
 } from "@/lib/types/analysis";
 import type { Email } from "@/lib/types/email";
+import { emailToAnalysisRequest } from "@/lib/utils/gmail";
 
 export function emailsToBulkRequest(emails: Email[]): BulkEmailAnalysisRequest {
   return {
-    emails: emails.map((email) => ({
-      subject: email.subject,
-      sender: email.sender,
-      snippet: email.snippet ?? "",
-    })),
+    emails: emails.map((email) => emailToAnalysisRequest(email)),
   };
 }
 
