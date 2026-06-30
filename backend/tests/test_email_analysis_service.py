@@ -82,6 +82,23 @@ class EmailAnalysisServiceTests(unittest.TestCase):
         self.assertEqual(result.category, "Other")
         self.assertEqual(result.action_items, ["No immediate action needed."])
 
+    def test_prefers_body_over_snippet_for_classification(self) -> None:
+        result = analyze_email(
+            EmailAnalysisRequest(
+                subject="Weekly newsletter",
+                sender="news@community.example",
+                snippet="Short preview only.",
+                body=(
+                    "Interview invitation: please confirm your interview slot by Friday. "
+                    "This message requires action."
+                ),
+            )
+        )
+
+        self.assertEqual(result.priority, "High")
+        self.assertEqual(result.category, "Career")
+        self.assertIn("interview slot", result.summary)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

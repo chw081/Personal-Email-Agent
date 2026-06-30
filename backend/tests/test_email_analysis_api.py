@@ -93,7 +93,10 @@ class BulkAnalyzeApiTests(unittest.TestCase):
 
         data = response.json()
         for index, email in enumerate(SAMPLE_BULK_PAYLOAD["emails"]):
-            self.assertEqual(data["results"][index]["original_email"], email)
+            original = data["results"][index]["original_email"]
+            self.assertEqual(original["subject"], email["subject"])
+            self.assertEqual(original["sender"], email["sender"])
+            self.assertEqual(original["snippet"], email["snippet"])
 
     def test_bulk_analyze_includes_analysis_fields(self) -> None:
         response = client.post("/email-analysis/bulk-analyze", json=SAMPLE_BULK_PAYLOAD)

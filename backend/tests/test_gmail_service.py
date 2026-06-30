@@ -40,6 +40,27 @@ SAMPLE_GMAIL_RESPONSE = {
 }
 
 
+def _b64(value: str) -> str:
+    import base64
+
+    return base64.urlsafe_b64encode(value.encode()).decode().rstrip("=")
+
+
+PLAIN_BODY_MESSAGE = {
+    **SAMPLE_GMAIL_RESPONSE,
+    "payload": {
+        "headers": [
+            {"name": "From", "value": "Shop <orders@shop.example>"},
+            {"name": "To", "value": "customer@example.com"},
+            {"name": "Subject", "value": "Order shipped"},
+            {"name": "Date", "value": "Mon, 1 Jan 2024 10:00:00 +0000"},
+        ],
+        "mimeType": "text/plain",
+        "body": {"data": _b64("Your order has shipped and will arrive tomorrow.")},
+    },
+}
+
+
 class HeaderAndFormatTests(unittest.TestCase):
     def test_header_value_is_case_insensitive(self) -> None:
         headers = [{"name": "Subject", "value": "Hello"}]
@@ -58,6 +79,16 @@ class HeaderAndFormatTests(unittest.TestCase):
         self.assertTrue(result["date"].startswith("2024-01-01"))
         self.assertEqual(result["snippet"], "Your order has shipped.")
         self.assertEqual(result["internal_date_ms"], 1704103200000)
+        self.assertEqual(result["recipients"], "")
+        self.assertEqual(result["body_text"], "")
+        self.assertFalse(result["has_attachment"])
+
+    def test_format_message_extracts_plain_text_body(self) -> None:
+        result = _format_message(PLAIN_BODY_MESSAGE)
+
+        self.assertEqual(result["recipients"], "customer@example.com")
+        self.assertEqual(result["body_text"], "Your order has shipped and will arrive tomorrow.")
+        self.assertFalse(result["has_attachment"])
 
 
 class FetchRecentMessagesTests(unittest.TestCase):
@@ -74,10 +105,7 @@ class FetchRecentMessagesTests(unittest.TestCase):
             "messages": [{"id": "abc123"}, {"id": "def456"}],
         }
         mock_service.users().messages().get().execute.side_effect = [
-            {
-                **SAMPLE_GMAIL_RESPONSE,
-                "internalDate": "1704103200000",
-            },
+            PLAIN_BODY_MESSAGE,
             {
                 **SAMPLE_GMAIL_RESPONSE,
                 "id": "def456",
@@ -87,9 +115,12 @@ class FetchRecentMessagesTests(unittest.TestCase):
                 "payload": {
                     "headers": [
                         {"name": "From", "value": "Calendar <cal@example.com>"},
+                        {"name": "To", "value": "team@example.com"},
                         {"name": "Subject", "value": "Team sync"},
                         {"name": "Date", "value": "Tue, 2 Jan 2024 09:00:00 +0000"},
-                    ]
+                    ],
+                    "mimeType": "text/plain",
+                    "body": {"data": _b64("Please schedule a follow up meeting about the invoice.")},
                 },
             },
         ]
@@ -100,6 +131,7 @@ class FetchRecentMessagesTests(unittest.TestCase):
         self.assertEqual(results[0]["gmail_id"], "def456")
         self.assertEqual(results[1]["gmail_id"], "abc123")
         self.assertEqual(results[0]["subject"], "Team sync")
+        self.assertIn("follow up meeting", results[0]["body_text"].lower())
         self.assertEqual(mock_get_service.call_count, 1)
 
     @patch.object(gmail_service, "get_gmail_service")

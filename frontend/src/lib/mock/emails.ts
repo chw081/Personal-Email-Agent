@@ -403,8 +403,10 @@ function buildMockActionItems(category: string): string[] {
 }
 
 export function mockAnalyzeEmailContent(email: Email): EmailAnalysisResult {
-  const text = [email.subject, email.sender, email.snippet].filter(Boolean).join(" ").toLowerCase();
+  const body = email.body_text?.trim();
   const snippet = email.snippet?.trim() ?? "";
+  const content = body || snippet;
+  const text = [email.subject, email.sender, content].filter(Boolean).join(" ").toLowerCase();
 
   let category = "Other";
   if (CAREER_KEYWORDS.some((keyword) => text.includes(keyword))) category = "Career";
@@ -416,7 +418,7 @@ export function mockAnalyzeEmailContent(email: Email): EmailAnalysisResult {
   else if (MEDIUM_PRIORITY_KEYWORDS.some((keyword) => text.includes(keyword))) priority = "Medium";
 
   return {
-    summary: snippet || "No useful preview available.",
+    summary: content || "No useful preview available.",
     priority,
     category,
     action_items: buildMockActionItems(category),
