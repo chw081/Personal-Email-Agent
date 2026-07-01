@@ -2,7 +2,7 @@
 
 An AI-powered email management application that helps users organize, prioritize, and understand their inbox. Built as a full-stack project with a Next.js frontend and a FastAPI backend.
 
-> **Status:** Active development — not production-ready. Gmail integration and analysis work locally as an MVP; advanced AI, persistence, and production auth are planned.
+> **Status:** Active development — not production-ready. Gmail integration and rule-based analysis work locally as an MVP; LLM-powered analysis, persistence, and production auth are planned.
 
 ---
 
@@ -10,9 +10,9 @@ An AI-powered email management application that helps users organize, prioritize
 
 Managing a large inbox is time-consuming. Important messages get buried, follow-ups are missed, and low-value mail competes for attention.
 
-**Personal Email Agent** is a full-stack application designed to reduce that friction. Today it connects to Gmail, displays real inbox messages in a dashboard, and applies rule-based analysis to help users spot priority, category, and suggested actions. The long-term goal is to evolve this into a **personal email agent** — software that understands inbox context, surfaces what matters, drafts responses, and recommends next steps while keeping the user in control.
+**Personal Email Agent** is a full-stack application designed to reduce that friction. Today it connects to Gmail, extracts readable email body text when available, displays real messages in a dashboard, and applies rule-based analysis to help users spot priority, category, and suggested actions. The long-term goal is to evolve this into a **personal email agent** — software that understands inbox context, surfaces what matters, drafts responses, and recommends next steps while keeping the user in control.
 
-This repository is intentionally structured so analysis, Gmail integration, and UI can improve incrementally without rewriting the whole stack.
+This repository is intentionally structured so Gmail parsing, analysis providers, and UI can improve incrementally without rewriting the whole stack.
 
 ---
 
@@ -21,8 +21,13 @@ This repository is intentionally structured so analysis, Gmail integration, and 
 ### Gmail & inbox
 
 - **Gmail OAuth (local)** — read-only OAuth flow using a Google Cloud Desktop client
-- **Real Gmail retrieval** — fetches recent inbox messages via the Gmail API
-- **Frontend dashboard** — responsive layout with inbox list, selected email detail, inbox overview, and per-email AI analysis
+- **Real Gmail retrieval** — fetches recent inbox messages via the Gmail API (`format=full`)
+- **Email body extraction** — parses MIME payloads to extract plain-text body content when available
+- **HTML fallback** — converts HTML parts to readable text when no plain-text body exists
+- **Snippet fallback** — uses Gmail snippets only when extracted body text is unavailable
+- **Attachment detection** — flags messages with attachments (`has_attachment`); attachment contents are not parsed
+- **Normalized email objects** — sender, recipients, subject, date, snippet, body text, and attachment flag exposed via stable API schemas
+- **Frontend dashboard** — responsive layout with inbox list, selected email detail, inbox overview, and per-email analysis
 - **Refresh inbox** — reload recent Gmail messages from the dashboard
 
 ### Analysis (MVP)
@@ -30,6 +35,8 @@ This repository is intentionally structured so analysis, Gmail integration, and 
 - **Single-email analysis** — `POST /email-analysis/analyze`
 - **Bulk inbox analysis** — `POST /email-analysis/bulk-analyze`
 - **Inbox summary** — `POST /email-analysis/inbox-summary` (priority/category counts and a short summary sentence)
+- **Body-first analysis** — analysis prefers extracted body text over snippets when both are available
+- **Provider-based architecture** — rule-based provider is the default; structured for future LLM providers
 - **Rule-based classifier** — keyword-driven priority, category, summary, and action items (not LLM-powered yet)
 - **Selected email AI Analysis panel** — analyze or re-analyze the currently selected message
 
@@ -37,33 +44,36 @@ This repository is intentionally structured so analysis, Gmail integration, and 
 
 - **Layered FastAPI design** — routers, services, schemas, and models
 - **Stable API contracts** — Pydantic schemas for request/response shapes
-- **Gmail logic in the service layer** — OAuth and API calls isolated from HTTP handlers
-- **SQLAlchemy + SQLite** — database models and dev endpoints (email persistence is not yet synced with Gmail)
+- **Gmail logic in the service layer** — OAuth, MIME parsing, and API calls isolated from HTTP handlers
+- **Analysis provider pattern** — `analysis_providers/` with a shared interface and rule-based implementation
+- **SQLAlchemy + SQLite** — database models and dev endpoints (Gmail messages are not yet synced to the database)
 - **Interactive API docs** — Swagger UI at `/docs`
 
 ### Developer experience
 
 - Mock email mode for frontend development (`NEXT_PUBLIC_USE_MOCK_DATA=true`)
-- Unit and API tests for analysis and Gmail services
+- Unit and API tests for Gmail parsing, analysis providers, and endpoints
 - Environment-based configuration (no hardcoded machine paths)
 
 ---
 
 ## Current Limitations
 
-Be aware of what this project **does not** do yet:
+Be aware of what this project **does not** do yet — and where current behavior is still basic:
 
 | Area | Limitation |
 |------|------------|
-| **Analysis** | Categorization is basic and rule-based (keywords), not OpenAI-powered |
-| **Email content** | UI and analysis rely mainly on **snippets**, not full MIME/body parsing |
-| **Attachments** | Attachments and inline images are not parsed or displayed |
+| **Body parsing** | Implemented but basic — plain text preferred, HTML converted to text; complex layouts may not render perfectly |
+| **Attachments** | Detected (`has_attachment`) but **not parsed**, downloaded, or displayed |
+| **Inline images** | Not extracted or analyzed |
+| **Documents** | PDFs and other attachment types are not parsed |
+| **Analysis** | Rule-based keyword classification — may be inaccurate; not LLM-powered yet |
 | **Auth** | No production user authentication or multi-user support |
 | **Persistence** | Gmail messages are fetched on demand; they are **not** synced to the database |
-| **AI agent** | No autonomous workflows, reply drafting, or follow-up tracking yet |
+| **AI agent** | No autonomous workflows, reply drafting, follow-up tracking, or automatic email actions |
 | **Deployment** | Local development only — no hosted demo or production deployment |
 
-OpenAI-powered analysis, richer parsing, database sync, and agent workflows are on the roadmap.
+OpenAI/LLM-powered analysis, richer HTML cleanup, attachment parsing, database sync, and agent workflows are on the roadmap.
 
 ---
 
@@ -74,7 +84,7 @@ OpenAI-powered analysis, richer parsing, database sync, and agent workflows are 
 | **Frontend** | Next.js, React, TypeScript, Tailwind CSS |
 | **Backend** | Python, FastAPI, Pydantic, SQLAlchemy, SQLite |
 | **Integrations** | Google Gmail API, Google OAuth (read-only) |
-| **Planned** | OpenAI SDK (dependency present; not fully wired into analysis yet) |
+| **Planned** | OpenAI SDK (dependency present; not wired into analysis providers yet) |
 
 ---
 
@@ -86,15 +96,17 @@ Next.js Dashboard (frontend)
         │  HTTP — stable JSON API contracts
         ▼
 FastAPI Routers
-  ├── /dev/gmail/recent      → recent inbox messages
+  ├── /dev/gmail/recent      → recent inbox messages (normalized)
   ├── /email-analysis/*      → analyze, bulk-analyze, inbox-summary
   ├── /emails                → CRUD (database-backed)
   └── /dev/seed              → mock data for development
         │
         ▼
 Service Layer
-  ├── gmail_service          → OAuth, token refresh, Gmail API calls
-  ├── email_analysis_service → rule-based per-email analysis
+  ├── gmail_service          → OAuth, Gmail API, normalized email objects
+  ├── gmail_content          → MIME/HTML parsing (Gmail-specific, internal)
+  ├── email_analysis_service → public analysis API (delegates to provider)
+  ├── analysis_providers/    → provider interface + rule_based (default)
   ├── inbox_summary_service  → aggregate stats from analyzed results
   └── classifier_service     → legacy DB-backed classifier (separate path)
         │
@@ -105,11 +117,13 @@ Schemas (API contracts)  ·  Models (persistence)
 ### Design principles
 
 - **Frontend / backend separation** — the dashboard calls backend REST endpoints; it does not talk to Gmail directly.
+- **Gmail parsing stays in the Gmail layer** — MIME walking, base64 decoding, and HTML-to-text conversion live in `gmail_content` / `gmail_service`; raw Gmail payloads never reach routers or the frontend.
+- **Normalized email objects** — the API exposes stable fields (`body_text`, `recipients`, `has_attachment`, etc.) that the frontend maps to its own types.
+- **Analysis prefers body over snippet** — `EmailAnalysisRequest` accepts an optional `body`; providers use full extracted text when available, falling back to snippets.
+- **Provider-ready analysis** — `EmailAnalysisProvider` defines a small interface; swapping rule-based for LLM analysis should not require router or frontend changes.
 - **Routers stay thin** — validate input, call services, return schema-typed responses.
-- **Services own business logic** — Gmail OAuth, message fetching, and analysis rules live here.
-- **Schemas define contracts** — frontend and backend agree on shapes like `EmailAnalysisRequest`, `BulkEmailAnalysisResponse`, and `InboxSummaryResponse`.
-- **Models are for persistence** — SQLAlchemy models support stored emails/analyses; Gmail fetch is separate from DB sync today.
-- **Gmail specifics stay internal** — the frontend consumes normalized API responses (e.g. mapped `Email` objects), not raw Gmail API payloads.
+- **Schemas define contracts** — frontend and backend agree on shapes like `EmailAnalysisRequest`, `GmailRecentEmail`, and `InboxSummaryResponse`.
+- **Models are for persistence** — SQLAlchemy models support stored emails/analyses; live Gmail fetch remains separate from DB sync today.
 
 ---
 
@@ -128,7 +142,11 @@ Personal-Email-Agent/
 ├── backend/
 │   ├── app/
 │   │   ├── routers/          # HTTP endpoints
-│   │   ├── services/         # Gmail, analysis, mock data
+│   │   ├── services/
+│   │   │   ├── analysis_providers/  # Provider interface + rule_based
+│   │   │   ├── gmail_service.py     # OAuth + normalized Gmail fetch
+│   │   │   ├── gmail_content.py     # MIME/HTML body extraction
+│   │   │   └── email_analysis_service.py
 │   │   ├── schemas/          # Pydantic request/response models
 │   │   ├── models/           # SQLAlchemy database models
 │   │   ├── config.py         # Settings from environment
@@ -217,8 +235,9 @@ Set `NEXT_PUBLIC_USE_MOCK_DATA=true` to use local mock emails without calling Gm
 
 1. Start backend and frontend.
 2. Open the dashboard — recent Gmail messages load automatically (or mock data if enabled).
-3. Select an email to view detail and run **AI Analysis** on the selected message.
-4. Use **Analyze Inbox** or **Generate Summary** in the inbox overview panel for bulk operations.
+3. Select an email to view extracted body text in the detail panel.
+4. Run **AI Analysis** on the selected message (uses body text when available).
+5. Use **Analyze Inbox** or **Generate Summary** in the inbox overview panel for bulk operations.
 
 ---
 
@@ -226,8 +245,8 @@ Set `NEXT_PUBLIC_USE_MOCK_DATA=true` to use local mock emails without calling Gm
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/dev/gmail/recent?limit=5` | Fetch recent Gmail inbox messages |
-| `POST` | `/email-analysis/analyze` | Analyze a single email (subject, sender, snippet) |
+| `GET` | `/dev/gmail/recent?limit=5` | Fetch recent Gmail messages with extracted body text |
+| `POST` | `/email-analysis/analyze` | Analyze a single email (subject, sender, snippet, optional body) |
 | `POST` | `/email-analysis/bulk-analyze` | Analyze up to 50 emails in one request |
 | `POST` | `/email-analysis/inbox-summary` | Analyze emails and return inbox-level summary |
 | `GET` | `/health` | Health check |
@@ -236,20 +255,24 @@ Set `NEXT_PUBLIC_USE_MOCK_DATA=true` to use local mock emails without calling Gm
 
 ## Roadmap
 
-### Completed (foundation)
+### Completed
 
 - [x] FastAPI backend with layered architecture
 - [x] Next.js dashboard with inbox, detail, overview, and analysis UI
 - [x] Gmail OAuth and real inbox retrieval (local)
+- [x] Parse Gmail email body text (plain text + HTML fallback)
+- [x] Use extracted body text for analysis when available
+- [x] Attachment detection (flag only)
 - [x] Rule-based analysis and inbox summary endpoints
+- [x] Analysis provider architecture (ready for LLM swap)
 - [x] Frontend integration with backend APIs
 
 ### In progress / next
 
 - [ ] Improve responsive UI polish across breakpoints
-- [ ] Richer email parsing (full bodies, not just snippets)
-- [ ] Attachment and inline image support
-- [ ] Replace rule-based classifier with OpenAI-powered analysis
+- [ ] Improve HTML email cleanup and rendering quality
+- [ ] Parse attachments and documents (PDF, etc.)
+- [ ] Replace rule-based classifier with LLM-powered analysis
 - [ ] Database persistence and Gmail message sync
 - [ ] Production authentication and multi-user support
 
@@ -280,7 +303,7 @@ The goal is to grow Personal Email Agent from an inbox analysis tool into a **tr
 - Suggests actions and drafts (with human approval)
 - Tracks follow-ups and reduces inbox noise
 
-All automation is intended to assist — not replace — the user's judgment.
+All automation is intended to assist — not replace — the user's judgment. The project does not perform automatic email actions today.
 
 ---
 
