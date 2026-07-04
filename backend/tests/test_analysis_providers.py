@@ -7,13 +7,15 @@ Run from backend/:
 
 from __future__ import annotations
 
+import inspect
 import sys
 import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.schemas.analysis import EmailAnalysisRequest
+from app.schemas.analysis import EmailAnalysisRequest, EmailAnalysisResponse
+from app.services.analysis_providers import LLMEmailAnalysisProvider
 from app.services.analysis_providers.base import get_analysis_content
 from app.services.analysis_providers.rule_based import RuleBasedEmailAnalysisProvider
 from app.services.email_analysis_service import analyze_email, get_analysis_provider
@@ -55,6 +57,32 @@ class AnalysisProviderTests(unittest.TestCase):
         self.assertNotIn("HIGH_PRIORITY_KEYWORDS", source)
         self.assertNotIn("_determine_priority", source)
         self.assertNotIn("_determine_category", source)
+
+    def test_llm_provider_is_importable(self) -> None:
+        self.assertTrue(inspect.isclass(LLMEmailAnalysisProvider))
+
+    def test_llm_provider_follows_same_interface(self) -> None:
+        rule_based_sig = inspect.signature(RuleBasedEmailAnalysisProvider.analyze)
+        llm_sig = inspect.signature(LLMEmailAnalysisProvider.analyze)
+
+        self.assertEqual(rule_based_sig, llm_sig)
+        self.assertEqual(
+            llm_sig.return_annotation,
+            EmailAnalysisResponse,
+        )
+
+    def test_llm_provider_raises_not_implemented(self) -> None:
+        email = EmailAnalysisRequest(
+            subject="Test subject",
+            sender="sender@example.com",
+            snippet="Preview text",
+        )
+
+        with self.assertRaises(NotImplementedError) as ctx:
+            LLMEmailAnalysisProvider().analyze(email)
+
+        self.assertIn("LLMEmailAnalysisProvider", str(ctx.exception))
+        self.assertIn("not yet connected", str(ctx.exception).lower())
 
 
 if __name__ == "__main__":
