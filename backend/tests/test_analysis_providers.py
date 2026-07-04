@@ -21,7 +21,10 @@ from app.services.email_analysis_service import analyze_email, get_analysis_prov
 
 class AnalysisProviderTests(unittest.TestCase):
     def test_default_provider_is_rule_based(self) -> None:
-        self.assertIsInstance(get_analysis_provider(), RuleBasedEmailAnalysisProvider)
+        from app.services.email_analysis_service import DEFAULT_ANALYSIS_PROVIDER
+
+        self.assertIsInstance(DEFAULT_ANALYSIS_PROVIDER, RuleBasedEmailAnalysisProvider)
+        self.assertIs(get_analysis_provider(), DEFAULT_ANALYSIS_PROVIDER)
 
     def test_get_analysis_content_prefers_body(self) -> None:
         email = EmailAnalysisRequest(
@@ -44,6 +47,14 @@ class AnalysisProviderTests(unittest.TestCase):
         service_result = analyze_email(email)
 
         self.assertEqual(provider_result, service_result)
+
+    def test_service_has_no_rule_logic_duplication(self) -> None:
+        import app.services.email_analysis_service as service_module
+
+        source = Path(service_module.__file__).read_text(encoding="utf-8")
+        self.assertNotIn("HIGH_PRIORITY_KEYWORDS", source)
+        self.assertNotIn("_determine_priority", source)
+        self.assertNotIn("_determine_category", source)
 
 
 if __name__ == "__main__":
