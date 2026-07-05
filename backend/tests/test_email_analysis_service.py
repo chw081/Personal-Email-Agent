@@ -11,15 +11,33 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from app.config import Settings, get_settings
 from app.schemas.analysis import EmailAnalysisRequest
+from app.services import email_analysis_service
 from app.services.email_analysis_service import analyze_email
 
 
+def _rule_based_settings() -> Settings:
+    settings = Settings()
+    settings.analysis_provider = "rule_based"
+    return settings
+
+
+@patch("app.services.email_analysis_service.get_settings", return_value=_rule_based_settings())
 class EmailAnalysisServiceTests(unittest.TestCase):
-    def test_high_priority_career_email(self) -> None:
+    def setUp(self) -> None:
+        email_analysis_service.reset_analysis_provider_cache()
+        get_settings.cache_clear()
+
+    def tearDown(self) -> None:
+        email_analysis_service.reset_analysis_provider_cache()
+        get_settings.cache_clear()
+
+    def test_high_priority_career_email(self, _mock_settings: object) -> None:
         result = analyze_email(
             EmailAnalysisRequest(
                 subject="Interview invitation for backend role",
@@ -33,7 +51,7 @@ class EmailAnalysisServiceTests(unittest.TestCase):
         self.assertEqual(result.action_items, ["Review and respond if relevant."])
         self.assertIn("interview slot", result.summary)
 
-    def test_medium_priority_finance_email(self) -> None:
+    def test_medium_priority_finance_email(self, _mock_settings: object) -> None:
         result = analyze_email(
             EmailAnalysisRequest(
                 subject="Invoice for March services",
@@ -46,7 +64,7 @@ class EmailAnalysisServiceTests(unittest.TestCase):
         self.assertEqual(result.category, "Finance")
         self.assertEqual(result.action_items, ["Check financial details."])
 
-    def test_promotion_email(self) -> None:
+    def test_promotion_email(self, _mock_settings: object) -> None:
         result = analyze_email(
             EmailAnalysisRequest(
                 subject="Limited time sale",
@@ -58,7 +76,7 @@ class EmailAnalysisServiceTests(unittest.TestCase):
         self.assertEqual(result.category, "Promotion")
         self.assertEqual(result.action_items, ["No immediate action needed."])
 
-    def test_empty_snippet_fallback_summary(self) -> None:
+    def test_empty_snippet_fallback_summary(self, _mock_settings: object) -> None:
         result = analyze_email(
             EmailAnalysisRequest(
                 subject="Hello",
@@ -69,7 +87,7 @@ class EmailAnalysisServiceTests(unittest.TestCase):
 
         self.assertEqual(result.summary, "No useful preview available.")
 
-    def test_default_other_low_case(self) -> None:
+    def test_default_other_low_case(self, _mock_settings: object) -> None:
         result = analyze_email(
             EmailAnalysisRequest(
                 subject="Weekly newsletter",
@@ -82,7 +100,7 @@ class EmailAnalysisServiceTests(unittest.TestCase):
         self.assertEqual(result.category, "Other")
         self.assertEqual(result.action_items, ["No immediate action needed."])
 
-    def test_prefers_body_over_snippet_for_classification(self) -> None:
+    def test_prefers_body_over_snippet_for_classification(self, _mock_settings: object) -> None:
         result = analyze_email(
             EmailAnalysisRequest(
                 subject="Weekly newsletter",
