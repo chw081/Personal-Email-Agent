@@ -2,7 +2,7 @@
 
 An AI-powered email management application that helps users organize, prioritize, and understand their inbox. Built as a full-stack project with a Next.js frontend and a FastAPI backend.
 
-> **Status:** Active development — not production-ready. Gmail integration and rule-based analysis work locally as an MVP; LLM-powered analysis, persistence, and production auth are planned.
+> **Status:** Active development — not production-ready. Gmail integration and Gemini-powered analysis work locally as an MVP; persistence, production auth, and advanced agent workflows are planned.
 
 ---
 
@@ -10,9 +10,21 @@ An AI-powered email management application that helps users organize, prioritize
 
 Managing a large inbox is time-consuming. Important messages get buried, follow-ups are missed, and low-value mail competes for attention.
 
-**Personal Email Agent** is a full-stack application designed to reduce that friction. Today it connects to Gmail, extracts readable email body text when available, displays real messages in a dashboard, and applies rule-based analysis to help users spot priority, category, and suggested actions. The long-term goal is to evolve this into a **personal email agent** — software that understands inbox context, surfaces what matters, drafts responses, and recommends next steps while keeping the user in control.
+**Personal Email Agent** is a full-stack application designed to reduce that friction. Today it connects to Gmail, extracts readable email body text when available, displays real messages in a dashboard, and applies Gemini-powered LLM analysis (with a rule-based fallback) to help users spot priority, category, and suggested actions. The long-term goal is to evolve this into a **personal email agent** — software that understands inbox context, surfaces what matters, drafts responses, and recommends next steps while keeping the user in control.
 
 This repository is intentionally structured so Gmail parsing, analysis providers, and UI can improve incrementally without rewriting the whole stack.
+
+---
+
+## Features
+
+- Gmail OAuth integration (read-only, local)
+- Real Gmail inbox retrieval with full body text extraction
+- Gemini-powered AI email analysis (priority, category, summary, action items)
+- Rule-based fallback analysis when LLM is unavailable or disabled
+- Extensible analysis provider architecture — swap providers via configuration
+- Bulk inbox analysis and inbox summary
+- Frontend dashboard with per-email AI Analysis panel
 
 ---
 
@@ -36,16 +48,17 @@ This repository is intentionally structured so Gmail parsing, analysis providers
 - **Bulk inbox analysis** — `POST /email-analysis/bulk-analyze`
 - **Inbox summary** — `POST /email-analysis/inbox-summary` (priority/category counts and a short summary sentence)
 - **Body-first analysis** — analysis prefers extracted body text over snippets when both are available
-- **Provider-based architecture** — rule-based provider is the default; structured for future LLM providers
-- **Rule-based classifier** — keyword-driven priority, category, summary, and action items (not LLM-powered yet)
-- **Selected email AI Analysis panel** — analyze or re-analyze the currently selected message
+- **Provider-based architecture** — `ANALYSIS_PROVIDER=llm` activates Gemini; `rule_based` is the default and fallback
+- **Gemini LLM analysis** — Gemini is prompted with sender, subject, snippet, and body to return structured JSON (`summary`, `priority`, `category`, `action_items`); responses are validated against `EmailAnalysisResponse` before being returned
+- **Rule-based fallback** — if LLM analysis fails at runtime or `ANALYSIS_PROVIDER=rule_based`, keyword-based classification is used automatically
+- **Selected email AI Analysis panel** — analyze or re-analyze the currently selected message using the configured provider
 
 ### Backend architecture
 
 - **Layered FastAPI design** — routers, services, schemas, and models
 - **Stable API contracts** — Pydantic schemas for request/response shapes
 - **Gmail logic in the service layer** — OAuth, MIME parsing, and API calls isolated from HTTP handlers
-- **Analysis provider pattern** — `analysis_providers/` with a shared interface and rule-based implementation
+- **Analysis provider pattern** — `analysis_providers/` with a shared `EmailAnalysisProvider` interface; `LLMEmailAnalysisProvider` (Gemini) and `RuleBasedEmailAnalysisProvider` both available
 - **SQLAlchemy + SQLite** — database models and dev endpoints (Gmail messages are not yet synced to the database)
 - **Interactive API docs** — Swagger UI at `/docs`
 
@@ -67,13 +80,13 @@ Be aware of what this project **does not** do yet — and where current behavior
 | **Attachments** | Detected (`has_attachment`) but **not parsed**, downloaded, or displayed |
 | **Inline images** | Not extracted or analyzed |
 | **Documents** | PDFs and other attachment types are not parsed |
-| **Analysis** | Rule-based keyword classification — may be inaccurate; not LLM-powered yet |
+| **Analysis** | Prompt-based MVP — limited categories (Career, Finance, Promotion, Other); no thread or conversation awareness; no attachment understanding; output quality depends on the model |
 | **Auth** | No production user authentication or multi-user support |
 | **Persistence** | Gmail messages are fetched on demand; they are **not** synced to the database |
 | **AI agent** | No autonomous workflows, reply drafting, follow-up tracking, or automatic email actions |
 | **Deployment** | Local development only — no hosted demo or production deployment |
 
-OpenAI/LLM-powered analysis, richer HTML cleanup, attachment parsing, database sync, and agent workflows are on the roadmap.
+Richer HTML cleanup, attachment parsing, database sync, additional categories, and agent workflows are on the roadmap.
 
 ---
 
@@ -83,8 +96,7 @@ OpenAI/LLM-powered analysis, richer HTML cleanup, attachment parsing, database s
 |-------|----------------|
 | **Frontend** | Next.js, React, TypeScript, Tailwind CSS |
 | **Backend** | Python, FastAPI, Pydantic, SQLAlchemy, SQLite |
-| **Integrations** | Google Gmail API, Google OAuth (read-only) |
-| **Planned** | OpenAI SDK (dependency present; not wired into analysis providers yet) |
+| **Integrations** | Google Gmail API, Google OAuth (read-only), Google Gemini API (`google-genai` SDK) |
 
 ---
 
@@ -105,8 +117,10 @@ FastAPI Routers
 Service Layer
   ├── gmail_service          → OAuth, Gmail API, normalized email objects
   ├── gmail_content          → MIME/HTML parsing (Gmail-specific, internal)
-  ├── email_analysis_service → public analysis API (delegates to provider)
-  ├── analysis_providers/    → provider interface + rule_based (default)
+  ├── email_analysis_service → public analysis API (selects provider, handles fallback)
+  ├── analysis_providers/    → EmailAnalysisProvider interface
+  │     ├── LLMEmailAnalysisProvider     (Gemini, activated via ANALYSIS_PROVIDER=llm)
+  │     └── RuleBasedEmailAnalysisProvider  (default and fallback)
   ├── inbox_summary_service  → aggregate stats from analyzed results
   └── classifier_service     → legacy DB-backed classifier (separate path)
         │
@@ -120,7 +134,7 @@ Schemas (API contracts)  ·  Models (persistence)
 - **Gmail parsing stays in the Gmail layer** — MIME walking, base64 decoding, and HTML-to-text conversion live in `gmail_content` / `gmail_service`; raw Gmail payloads never reach routers or the frontend.
 - **Normalized email objects** — the API exposes stable fields (`body_text`, `recipients`, `has_attachment`, etc.) that the frontend maps to its own types.
 - **Analysis prefers body over snippet** — `EmailAnalysisRequest` accepts an optional `body`; providers use full extracted text when available, falling back to snippets.
-- **Provider-ready analysis** — `EmailAnalysisProvider` defines a small interface; swapping rule-based for LLM analysis should not require router or frontend changes.
+- **Swappable analysis providers** — `EmailAnalysisProvider` defines a small interface; `ANALYSIS_PROVIDER=llm` activates Gemini without touching routers or the frontend. LLM failures fall back to rule-based automatically.
 - **Routers stay thin** — validate input, call services, return schema-typed responses.
 - **Schemas define contracts** — frontend and backend agree on shapes like `EmailAnalysisRequest`, `GmailRecentEmail`, and `InboxSummaryResponse`.
 - **Models are for persistence** — SQLAlchemy models support stored emails/analyses; live Gmail fetch remains separate from DB sync today.
@@ -143,7 +157,7 @@ Personal-Email-Agent/
 │   ├── app/
 │   │   ├── routers/          # HTTP endpoints
 │   │   ├── services/
-│   │   │   ├── analysis_providers/  # Provider interface + rule_based
+│   │   │   ├── analysis_providers/  # EmailAnalysisProvider interface, LLMEmailAnalysisProvider (Gemini), RuleBasedEmailAnalysisProvider
 │   │   │   ├── gmail_service.py     # OAuth + normalized Gmail fetch
 │   │   │   ├── gmail_content.py     # MIME/HTML body extraction
 │   │   │   └── email_analysis_service.py
@@ -169,6 +183,7 @@ Personal-Email-Agent/
 - Node.js 20+
 - A Google Cloud project with the **Gmail API** enabled
 - OAuth **Desktop app** credentials (`credentials.json`)
+- A [Google AI Studio](https://aistudio.google.com/) API key (for Gemini analysis)
 
 ### 1. Backend setup
 
@@ -204,14 +219,21 @@ On first successful Gmail access, the backend runs the OAuth flow in your browse
 backend/token.json
 ```
 
-You can override paths via `.env`:
+### 3. Backend environment variables
+
+Copy `.example.env` to `.env` and fill in the required values:
 
 ```env
-GMAIL_CREDENTIALS_PATH=credentials.json
-GMAIL_TOKEN_PATH=token.json
+GMAIL_CREDENTIALS_PATH=credentials.json   # Path to your OAuth client credentials (relative to backend/)
+GMAIL_TOKEN_PATH=token.json               # Path where the OAuth refresh token is stored (relative to backend/)
+GEMINI_API_KEY=your_gemini_api_key_here   # API key from Google AI Studio; required for LLM analysis
+GEMINI_MODEL=gemini-2.5-flash             # Gemini model to use; defaults to gemini-2.5-flash
+ANALYSIS_PROVIDER=llm                     # Set to "llm" for Gemini or "rule_based" for keyword fallback
 ```
 
-### 3. Frontend setup
+If `GEMINI_API_KEY` is missing or `ANALYSIS_PROVIDER` is not `llm`, the backend automatically falls back to rule-based analysis.
+
+### 4. Frontend setup
 
 ```bash
 cd frontend
@@ -231,12 +253,12 @@ NEXT_PUBLIC_USE_MOCK_DATA=false
 
 Set `NEXT_PUBLIC_USE_MOCK_DATA=true` to use local mock emails without calling Gmail.
 
-### 4. Try the dashboard
+### 5. Try the dashboard
 
 1. Start backend and frontend.
 2. Open the dashboard — recent Gmail messages load automatically (or mock data if enabled).
 3. Select an email to view extracted body text in the detail panel.
-4. Run **AI Analysis** on the selected message (uses body text when available).
+4. Run **AI Analysis** on the selected message (uses body text when available; routed through the configured provider).
 5. Use **Analyze Inbox** or **Generate Summary** in the inbox overview panel for bulk operations.
 
 ---
@@ -263,23 +285,33 @@ Set `NEXT_PUBLIC_USE_MOCK_DATA=true` to use local mock emails without calling Gm
 - [x] Parse Gmail email body text (plain text + HTML fallback)
 - [x] Use extracted body text for analysis when available
 - [x] Attachment detection (flag only)
+- [x] Analysis provider architecture with shared interface
 - [x] Rule-based analysis and inbox summary endpoints
-- [x] Analysis provider architecture (ready for LLM swap)
+- [x] Gemini LLM email analysis via `google-genai` SDK
+- [x] Structured JSON prompt with `EmailAnalysisResponse` schema validation
+- [x] Graceful fallback from LLM to rule-based on failure or missing key
+- [x] Provider selection via `ANALYSIS_PROVIDER` environment variable
 - [x] Frontend integration with backend APIs
 
 ### In progress / next
 
 - [ ] Improve responsive UI polish across breakpoints
 - [ ] Improve HTML email cleanup and rendering quality
+- [ ] Better prompt engineering (few-shot examples, category tuning)
+- [ ] Expand supported categories beyond the current four
 - [ ] Parse attachments and documents (PDF, etc.)
-- [ ] Replace rule-based classifier with LLM-powered analysis
+- [ ] Conversation and thread awareness
 - [ ] Database persistence and Gmail message sync
 - [ ] Production authentication and multi-user support
 
 ### Future
 
-- [ ] Agent workflows (triage, follow-ups, draft replies)
-- [ ] Calendar and task integrations
+- [ ] Batch prompt optimization for bulk analysis
+- [ ] Multiple LLM provider support (OpenAI, Anthropic, etc.)
+- [ ] RAG over historical emails for personalized context
+- [ ] Email drafting and reply suggestions (with human approval)
+- [ ] Smart inbox actions and follow-up tracking
+- [ ] Agent workflows (triage, follow-ups, calendar integrations)
 - [ ] Production deployment and observability
 
 ---
