@@ -2,11 +2,27 @@
 
 An AI-powered email management application that helps users organize, prioritize, and understand their inbox. Built as a full-stack project with a Next.js frontend and a FastAPI backend.
 
+![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.137-009688?logo=fastapi&logoColor=white)
+![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-4285F4?logo=google&logoColor=white)
+![Render](https://img.shields.io/badge/Deployed_on-Render-46E3B7?logo=render&logoColor=white)
+
 > **Status:** Active development — not production-ready. Gmail integration and Gemini-powered analysis work locally as an MVP; persistence, production auth, and advanced agent workflows are planned.
 
 ---
 
-## Overview
+## Live Demo
+
+The FastAPI backend is deployed on Render. Gmail OAuth is local-only, but the analysis endpoints and interactive docs are live.
+
+| | URL |
+|---|---|
+| **API** | <https://personal-email-agent.onrender.com> |
+| **Docs** | <https://personal-email-agent.onrender.com/docs> |
+
+---
+
+## About
 
 Managing a large inbox is time-consuming. Important messages get buried, follow-ups are missed, and low-value mail competes for attention.
 
@@ -313,6 +329,36 @@ Set `NEXT_PUBLIC_USE_MOCK_DATA=true` to use local mock emails without calling Gm
 - [ ] Smart inbox actions and follow-up tracking
 - [ ] Agent workflows (triage, follow-ups, calendar integrations)
 - [ ] Production deployment and observability
+
+---
+
+## Deployment
+
+### Render (backend)
+
+The FastAPI backend can be deployed as a **Web Service** on [Render](https://render.com).
+
+| Setting | Value |
+|---------|-------|
+| **Root Directory** | `backend` |
+| **Build Command** | `pip install -r requirements.txt` |
+| **Start Command** | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| **Runtime** | Python 3.11 (`backend/runtime.txt`) |
+
+#### Required environment variables
+
+Set these in the Render dashboard under **Environment**:
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | Database connection string (e.g. a Render PostgreSQL URL, or `sqlite:///./dev.db` for a quick test) |
+| `GEMINI_API_KEY` | API key from [Google AI Studio](https://aistudio.google.com/) |
+| `GEMINI_MODEL` | Gemini model to use (e.g. `gemini-2.5-flash`) |
+| `ANALYSIS_PROVIDER` | Set to `llm` to use Gemini or `rule_based` for the keyword fallback |
+
+#### Gmail OAuth note
+
+Gmail OAuth requires a browser-based flow and local credential files (`credentials.json`, `token.json`), which are not compatible with a stateless cloud deployment. On the hosted backend, the `/dev/gmail/recent` endpoint will not return real emails. The `/docs` Swagger UI and all `/email-analysis/*` endpoints work without Gmail credentials.
 
 ---
 
