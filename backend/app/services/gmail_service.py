@@ -181,7 +181,7 @@ def _fetch_message(service: Resource, message_id: str) -> GmailMessage:
     return _format_message(message)
 
 
-def fetch_recent_gmail_messages(limit: int = 5) -> list[GmailMessage]:
+def fetch_recent_gmail_messages(limit: int = 20) -> list[GmailMessage]:
     """
     Authenticate with Gmail and fetch recent inbox messages.
 

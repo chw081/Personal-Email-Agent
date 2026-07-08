@@ -83,7 +83,7 @@ export function Dashboard() {
     setError(null);
 
     try {
-      const fetched = await fetchRecentGmailEmails(5);
+      const fetched = await fetchRecentGmailEmails(20);
       setEmails(fetched);
       setSelectedEmailId((current) => {
         if (current && fetched.some((email) => email.id === current)) {

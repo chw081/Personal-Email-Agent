@@ -21,7 +21,7 @@ def seed_database(db: Session = Depends(get_db)) -> list:
 
 @router.get("/gmail/recent", response_model=GmailRecentResponse, response_model_by_alias=True)
 def get_recent_gmail_messages(
-    limit: int = Query(default=5, ge=1, le=50, description="Number of inbox messages to fetch"),
+    limit: int = Query(default=20, ge=1, le=50, description="Number of inbox messages to fetch"),
 ) -> GmailRecentResponse:
     try:
         emails = fetch_recent_gmail_messages(limit=limit)
