@@ -1,0 +1,212 @@
+[
+  {
+    "_id": "career-001",
+    "_note": "Classic recruiter interview invite — should be High/Career",
+    "input": {
+      "subject": "Interview invitation for Senior Backend Engineer",
+      "sender": "recruiter@techcorp.example",
+      "snippet": "Hi, we'd like to invite you to interview for the Senior Backend Engineer role.",
+      "body": "Hi,\n\nWe reviewed your profile and would like to invite you to a technical interview for the Senior Backend Engineer role at TechCorp.\n\nPlease confirm your availability by Friday.\n\nBest,\nSarah — TechCorp Recruiting"
+    },
+    "expected": {
+      "priority": "High",
+      "category": "Career",
+      "action_items_contain": ["respond", "confirm", "reply"]
+    }
+  },
+  {
+    "_id": "career-002",
+    "_note": "Job application confirmation — Medium/Career, no urgent action",
+    "input": {
+      "subject": "Your application to Acme Corp has been received",
+      "sender": "no-reply@acmecorp.example",
+      "snippet": "Thank you for applying to Acme Corp. We will review your application and get back to you.",
+      "body": null
+    },
+    "expected": {
+      "priority": "Medium",
+      "category": "Career",
+      "action_items_contain": []
+    }
+  },
+  {
+    "_id": "finance-001",
+    "_note": "Overdue invoice — High/Finance",
+    "input": {
+      "subject": "URGENT: Invoice #INV-4821 overdue — payment required",
+      "sender": "billing@vendor.example",
+      "snippet": "Your invoice is 14 days overdue. Please remit payment immediately.",
+      "body": "Dear customer,\n\nInvoice #INV-4821 for $320.00 is now 14 days past due. Continued non-payment may result in service suspension.\n\nPlease pay at: https://billing.vendor.example/pay\n\nThank you,\nVendor Billing Team"
+    },
+    "expected": {
+      "priority": "High",
+      "category": "Finance",
+      "action_items_contain": ["pay", "check", "review"]
+    }
+  },
+  {
+    "_id": "finance-002",
+    "_note": "Monthly bank statement — Low/Finance, no action",
+    "input": {
+      "subject": "Your March statement is ready",
+      "sender": "statements@mybank.example",
+      "snippet": "Your monthly statement for March is now available online.",
+      "body": null
+    },
+    "expected": {
+      "priority": "Low",
+      "category": "Finance",
+      "action_items_contain": []
+    }
+  },
+  {
+    "_id": "finance-003",
+    "_note": "Payment receipt for completed transaction — Low/Finance",
+    "input": {
+      "subject": "Payment receipt: $49.99 to StreamService",
+      "sender": "receipts@streamservice.example",
+      "snippet": "Your payment of $49.99 was processed successfully.",
+      "body": null
+    },
+    "expected": {
+      "priority": "Low",
+      "category": "Finance",
+      "action_items_contain": []
+    }
+  },
+  {
+    "_id": "promotion-001",
+    "_note": "Flash sale promotional email — Low/Promotion",
+    "input": {
+      "subject": "⚡ 48-hour flash sale — up to 60% off everything",
+      "sender": "sales@onlinestore.example",
+      "snippet": "Don't miss our biggest sale of the year. Shop now and save up to 60%.",
+      "body": null
+    },
+    "expected": {
+      "priority": "Low",
+      "category": "Promotion",
+      "action_items_contain": []
+    }
+  },
+  {
+    "_id": "promotion-002",
+    "_note": "Marketing newsletter with discount code — Low/Promotion",
+    "input": {
+      "subject": "Your exclusive 20% discount code inside",
+      "sender": "newsletter@brand.example",
+      "snippet": "Use code SAVE20 at checkout. Offer expires Sunday.",
+      "body": null
+    },
+    "expected": {
+      "priority": "Low",
+      "category": "Promotion",
+      "action_items_contain": []
+    }
+  },
+  {
+    "_id": "other-001",
+    "_note": "Generic newsletter with no clear category — Low/Other",
+    "input": {
+      "subject": "Weekly community digest — July edition",
+      "sender": "digest@community.example",
+      "snippet": "Here are this week's top community posts and announcements.",
+      "body": null
+    },
+    "expected": {
+      "priority": "Low",
+      "category": "Other",
+      "action_items_contain": []
+    }
+  },
+  {
+    "_id": "other-002",
+    "_note": "Account security alert — High/Other (security does not fit Career/Finance/Promotion)",
+    "input": {
+      "subject": "New sign-in detected on your account",
+      "sender": "security@someservice.example",
+      "snippet": "We noticed a new sign-in to your account from an unfamiliar device. If this was you, no action is needed.",
+      "body": "Hi,\n\nWe detected a sign-in from a new device (Chrome on Windows, US). If this was you, you can ignore this email.\n\nIf you don't recognize this activity, please secure your account immediately at: https://someservice.example/security\n\nThe SomeService Security Team"
+    },
+    "expected": {
+      "priority": "High",
+      "category": "Other",
+      "action_items_contain": ["verify", "check", "secure", "review"]
+    }
+  },
+  {
+    "_id": "career-003",
+    "_note": "Rejection email — Medium/Career (important to know, no immediate action)",
+    "input": {
+      "subject": "Update on your application — Acme Corp",
+      "sender": "recruiting@acmecorp.example",
+      "snippet": "Thank you for your interest. We have decided to move forward with other candidates.",
+      "body": "Hi,\n\nThank you for interviewing with us. After careful consideration, we've decided to move forward with other candidates for this role.\n\nWe'll keep your profile on file and encourage you to apply for future openings.\n\nBest regards,\nAcme Recruiting"
+    },
+    "expected": {
+      "priority": "Medium",
+      "category": "Career",
+      "action_items_contain": []
+    }
+  },
+  {
+    "_id": "finance-004",
+    "_note": "Subscription renewal reminder — Medium/Finance",
+    "input": {
+      "subject": "Your subscription renews in 3 days — $120/year",
+      "sender": "billing@softwaretool.example",
+      "snippet": "Your annual subscription to SoftwareTool will auto-renew on July 10 for $120.",
+      "body": null
+    },
+    "expected": {
+      "priority": "Medium",
+      "category": "Finance",
+      "action_items_contain": ["review", "check", "cancel", "renew"]
+    }
+  },
+  {
+    "_id": "other-003",
+    "_note": "Personal message from a friend — Medium/Other",
+    "input": {
+      "subject": "Dinner plans this weekend?",
+      "sender": "friend@gmail.com",
+      "snippet": "Hey, are you free Saturday evening? Thinking of trying that new Italian place.",
+      "body": null
+    },
+    "expected": {
+      "priority": "Medium",
+      "category": "Other",
+      "action_items_contain": ["reply", "respond"]
+    }
+  },
+  {
+    "_id": "career-004",
+    "_note": "ZipRecruiter automated job recommendation — Low/Career; automated digest, not direct recruiter outreach",
+    "input": {
+      "subject": "Christine, 14 new jobs match your profile",
+      "sender": "jobalerts@ziprecruiter.com",
+      "snippet": "Based on your profile, we found new opportunities you might like. See your matches.",
+      "body": null
+    },
+    "expected": {
+      "priority": "Low",
+      "category": "Career",
+      "action_items_contain": []
+    }
+  },
+  {
+    "_id": "career-005",
+    "_note": "LinkedIn weekly job digest — Low/Career; automated newsletter, not a personal message",
+    "input": {
+      "subject": "Your weekly job picks are here",
+      "sender": "jobs-noreply@linkedin.com",
+      "snippet": "See this week's top job recommendations based on your profile and recent activity.",
+      "body": null
+    },
+    "expected": {
+      "priority": "Low",
+      "category": "Career",
+      "action_items_contain": []
+    }
+  }
+]
