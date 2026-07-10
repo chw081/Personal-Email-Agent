@@ -11,14 +11,22 @@ An AI-powered email management application that helps users organize, prioritize
 
 ---
 
-## Live Demo
+## Demo
 
-The FastAPI backend is deployed on Render. Gmail OAuth is local-only, but the analysis endpoints and interactive docs are live.
+The frontend includes a `/demo` page for trying the AI email analysis without Gmail OAuth.
+Load a sample email preset or paste your own content, hit **Analyze Email**, and see priority, category, summary, and action items.
 
 | | URL |
 |---|---|
+| **Local demo** | [http://localhost:3000/demo](http://localhost:3000/demo) (requires local frontend + backend) |
 | **API** | <https://personal-email-agent.onrender.com> |
-| **Docs** | <https://personal-email-agent.onrender.com/docs> |
+| **API Docs** | <https://personal-email-agent.onrender.com/docs> |
+
+> **Note:** The `/demo` page does not require Gmail credentials or OAuth — it uses sample or manually entered email input and calls `POST /email-analysis/analyze` directly.
+> The local frontend and backend must both be running.
+> Email data is not stored.
+>
+> A hosted public demo would require deploying the frontend (e.g. to Vercel) and setting `NEXT_PUBLIC_API_URL` to the Render backend URL.
 
 ---
 
@@ -100,7 +108,7 @@ Be aware of what this project **does not** do yet — and where current behavior
 | **Auth** | No production user authentication or multi-user support |
 | **Persistence** | Gmail messages are fetched on demand; they are **not** synced to the database |
 | **AI agent** | No autonomous workflows, reply drafting, follow-up tracking, or automatic email actions |
-| **Deployment** | Local development only — no hosted demo or production deployment |
+| **Deployment** | Backend deployed on Render; Gmail OAuth is local-only (demo page works without it) |
 
 Richer HTML cleanup, attachment parsing, database sync, additional categories, and agent workflows are on the roadmap.
 
@@ -277,6 +285,16 @@ Set `NEXT_PUBLIC_USE_MOCK_DATA=true` to use local mock emails without calling Gm
 4. Run **AI Analysis** on the selected message (uses body text when available; routed through the configured provider).
 5. Use **Analyze Inbox** or **Generate Summary** in the inbox overview panel for bulk operations.
 
+### 6. Try the local AI analysis demo (no Gmail required)
+
+With both the frontend and backend running, navigate to [http://localhost:3000/demo](http://localhost:3000/demo).
+
+- Choose a sample email preset or paste your own sender, subject, snippet, and body.
+- Hit **Analyze Email** — no Gmail credentials or OAuth needed.
+- The page calls `POST /email-analysis/analyze` on the local backend and displays the result.
+
+> To make this demo publicly accessible, deploy the frontend (e.g. to Vercel) and set `NEXT_PUBLIC_API_URL` to the Render backend URL in your hosting environment.
+
 ---
 
 ## Key API Endpoints
@@ -308,6 +326,7 @@ Set `NEXT_PUBLIC_USE_MOCK_DATA=true` to use local mock emails without calling Gm
 - [x] Graceful fallback from LLM to rule-based on failure or missing key
 - [x] Provider selection via `ANALYSIS_PROVIDER` environment variable
 - [x] Frontend integration with backend APIs
+- [x] Public `/demo` page — AI analysis without Gmail OAuth (paste or select sample emails)
 
 ### In progress / next
 
