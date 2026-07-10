@@ -23,6 +23,8 @@ class Settings:
     gemini_api_key: str | None = os.getenv("GEMINI_API_KEY")
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     analysis_provider: str = os.getenv("ANALYSIS_PROVIDER", "rule_based")
+    # Comma-separated extra origins allowed by CORS (e.g. deployed frontend URL)
+    cors_extra_origins: str = os.getenv("CORS_EXTRA_ORIGINS", "")
 
 
 @lru_cache

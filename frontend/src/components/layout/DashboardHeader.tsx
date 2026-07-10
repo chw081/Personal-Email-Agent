@@ -1,4 +1,5 @@
-import { Mail, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { ExternalLink, Mail, Sparkles } from "lucide-react";
 
 interface DashboardHeaderProps {
   emailCount: number;
@@ -24,6 +25,14 @@ export function DashboardHeader({
       </div>
 
       <div className="flex items-center gap-4">
+        <Link
+          href="/demo"
+          className="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 transition hover:bg-indigo-100"
+        >
+          <Sparkles className="h-3 w-3" />
+          Try Demo
+          <ExternalLink className="h-3 w-3 opacity-60" />
+        </Link>
         <div className="hidden text-right sm:block">
           <p className="text-sm font-medium text-slate-700">
             {emailCount} emails · {analyzedCount} analyzed
