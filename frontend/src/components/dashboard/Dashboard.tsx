@@ -43,6 +43,7 @@ export function Dashboard() {
       : {},
   );
   const [analyzingEmailIds, setAnalyzingEmailIds] = useState<Record<string, boolean>>({});
+  const [analysisErrors, setAnalysisErrors] = useState<Record<string, string | null>>({});
   const [inboxSummary, setInboxSummary] = useState<InboxSummaryResponse | null>(null);
   const [isAnalyzingInbox, setIsAnalyzingInbox] = useState(false);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
@@ -58,6 +59,7 @@ export function Dashboard() {
   const selectedEmail = emails.find((email) => email.id === selectedEmailId) ?? null;
   const selectedAnalysis = selectedEmailId ? emailAnalysisResults[selectedEmailId] ?? null : null;
   const isAnalyzingSelected = selectedEmailId ? Boolean(analyzingEmailIds[selectedEmailId]) : false;
+  const selectedAnalysisError = selectedEmailId ? analysisErrors[selectedEmailId] ?? null : null;
 
   const emailIds = useMemo(() => emails.map((email) => email.id), [emails]);
 
@@ -115,6 +117,7 @@ export function Dashboard() {
   const handleAnalyzeEmail = useCallback(
     async (email: Email) => {
       setAnalyzingEmailIds((prev) => ({ ...prev, [email.id]: true }));
+      setAnalysisErrors((prev) => ({ ...prev, [email.id]: null }));
 
       try {
         let result: EmailAnalysisResult;
@@ -127,6 +130,14 @@ export function Dashboard() {
         }
 
         setEmailAnalysisResults((prev) => ({ ...prev, [email.id]: result }));
+      } catch (err) {
+        const message =
+          err instanceof ApiError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : "Failed to analyze email. Please try again.";
+        setAnalysisErrors((prev) => ({ ...prev, [email.id]: message }));
       } finally {
         setAnalyzingEmailIds((prev) => ({ ...prev, [email.id]: false }));
       }
@@ -264,6 +275,7 @@ export function Dashboard() {
             <AnalysisPanel
               analysis={selectedAnalysis}
               isAnalyzing={isAnalyzingSelected}
+              error={selectedAnalysisError}
               onAnalyze={handleAnalyze}
             />
           </div>

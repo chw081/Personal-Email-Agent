@@ -2,11 +2,13 @@ import {
   AlertTriangle,
   FolderOpen,
   ListChecks,
+  Loader2,
   Sparkles,
   Tag,
 } from "lucide-react";
 
 import { AnalysisCard } from "@/components/analysis/AnalysisCard";
+import { InlineEmailAnalysisError } from "@/components/analysis/InlineEmailAnalysis";
 import type { EmailAnalysisResult } from "@/lib/types/analysis";
 
 const PRIORITY_STYLES: Record<string, string> = {
@@ -18,10 +20,11 @@ const PRIORITY_STYLES: Record<string, string> = {
 interface AnalysisPanelProps {
   analysis: EmailAnalysisResult | null;
   isAnalyzing: boolean;
+  error?: string | null;
   onAnalyze: () => void;
 }
 
-export function AnalysisPanel({ analysis, isAnalyzing, onAnalyze }: AnalysisPanelProps) {
+export function AnalysisPanel({ analysis, isAnalyzing, error, onAnalyze }: AnalysisPanelProps) {
   const priorityStyle =
     analysis?.priority && PRIORITY_STYLES[analysis.priority]
       ? PRIORITY_STYLES[analysis.priority]
@@ -42,10 +45,20 @@ export function AnalysisPanel({ analysis, isAnalyzing, onAnalyze }: AnalysisPane
           disabled={isAnalyzing}
           className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <Sparkles className="h-4 w-4" />
+          {isAnalyzing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4" />
+          )}
           {isAnalyzing ? "Analyzing…" : analysis ? "Re-analyze" : "Analyze"}
         </button>
       </div>
+
+      {error && (
+        <div role="alert" aria-live="polite">
+          <InlineEmailAnalysisError message={error} />
+        </div>
+      )}
 
       {!analysis ? (
         <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50/80 p-6 text-center">
